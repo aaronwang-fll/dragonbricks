@@ -267,9 +267,6 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
           const hasCode = line.trim() && pythonCode;
           const isClickable = status === 'needs-clarification';
 
-          // Calculate input width based on content
-          const inputWidth = Math.max(200, Math.min(400, (line.length + 1) * 9.6));
-
           return (
             <div key={index} className="border-b border-gray-800">
               {/* Main row */}
@@ -283,7 +280,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                   {line.trim() && getStatusIcon(status)}
                 </div>
 
-                {/* Natural language input - auto-width based on content */}
+                {/* Natural language input - fixed width, shrinks only if Python needs space */}
                 <input
                   ref={el => inputRefs.current[index] = el}
                   type="text"
@@ -291,8 +288,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                   onChange={(e) => handleLineChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   placeholder={index === 0 && !line ? 'Type a command... (e.g., move forward 200mm)' : ''}
-                  style={{ width: line ? inputWidth : 300 }}
-                  className="flex-shrink-0 bg-transparent text-sm font-mono text-white placeholder-gray-600 py-2 px-2 outline-none border-0"
+                  className={`bg-transparent text-sm font-mono text-white placeholder-gray-600 py-2 px-2 outline-none border-0 ${isExpanded ? 'w-56 flex-shrink' : 'flex-1'}`}
                   spellCheck={false}
                 />
 
@@ -327,9 +323,6 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                     </button>
                   </>
                 )}
-
-                {/* Fill remaining space when collapsed or no code */}
-                {(!hasCode || !isExpanded) && <div className="flex-1" />}
               </div>
             </div>
           );
