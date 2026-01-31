@@ -1,53 +1,119 @@
-import { useProfileStore } from '../../stores/profileStore';
+import { useState } from 'react';
+
+const PORTS = ['A', 'B', 'C', 'D', 'E', 'F'];
+const NONE_OPTION = 'None';
 
 export function SetupSection() {
-  const { profiles, currentProfileId, useProfile, setCurrentProfileId, setUseProfile } =
-    useProfileStore();
+  const [config, setConfig] = useState({
+    leftMotor: 'A',
+    rightMotor: 'B',
+    attachment1: 'None',
+    attachment1Name: 'Attachment 1',
+    attachment2: 'None',
+    attachment2Name: 'Attachment 2',
+    colorSensor: 'C',
+    ultrasonicSensor: 'D',
+    forceSensor: 'None',
+  });
+
+  const [editingName, setEditingName] = useState<string | null>(null);
+
+  const updateConfig = (key: string, value: string) => {
+    setConfig(prev => ({ ...prev, [key]: value }));
+  };
+
+  const PortSelect = ({ value, onChange, allowNone = false }: { value: string; onChange: (v: string) => void; allowNone?: boolean }) => (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="px-2 py-1 border border-gray-300 rounded text-xs font-mono bg-white min-w-[60px]"
+    >
+      {allowNone && <option value="None">{NONE_OPTION}</option>}
+      {PORTS.map(p => (
+        <option key={p} value={p}>Port {p}</option>
+      ))}
+    </select>
+  );
+
+  const NameablePort = ({ portKey, nameKey, allowNone = true }: { portKey: string; nameKey: string; allowNone?: boolean }) => {
+    const isEditing = editingName === nameKey;
+    const port = config[portKey as keyof typeof config];
+    const name = config[nameKey as keyof typeof config];
+
+    return (
+      <div className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+        {isEditing ? (
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => updateConfig(nameKey, e.target.value)}
+            onBlur={() => setEditingName(null)}
+            onKeyDown={(e) => e.key === 'Enter' && setEditingName(null)}
+            className="flex-1 px-2 py-0.5 text-xs border border-blue-300 rounded"
+            autoFocus
+          />
+        ) : (
+          <span
+            className="flex-1 text-xs font-medium cursor-pointer hover:text-blue-600"
+            onClick={() => setEditingName(nameKey)}
+            title="Click to rename"
+          >
+            {name}
+          </span>
+        )}
+        <PortSelect
+          value={port}
+          onChange={(v) => updateConfig(portKey, v)}
+          allowNone={allowNone}
+        />
+      </div>
+    );
+  };
 
   return (
-    <div className="p-3 bg-white h-full">
-      <div className="flex items-center gap-4 mb-2">
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={useProfile}
-            onChange={(e) => setUseProfile(e.target.checked)}
-            className="rounded"
-          />
-          Use Robot Profile
-        </label>
-
-        {useProfile && (
-          <select
-            value={currentProfileId || ''}
-            onChange={(e) => setCurrentProfileId(e.target.value)}
-            className="px-2 py-1 border border-gray-300 rounded text-sm"
-          >
-            {profiles.map((profile) => (
-              <option key={profile.id} value={profile.id}>
-                {profile.name} {profile.isDefault ? '(Default)' : ''}
-              </option>
-            ))}
-          </select>
-        )}
+    <div className="p-3 bg-white h-full overflow-y-auto">
+      {/* Drive Motors */}
+      <div className="mb-3">
+        <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Drive Motors</h4>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+            <span className="text-xs font-medium">Left Motor</span>
+            <PortSelect value={config.leftMotor} onChange={(v) => updateConfig('leftMotor', v)} />
+          </div>
+          <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+            <span className="text-xs font-medium">Right Motor</span>
+            <PortSelect value={config.rightMotor} onChange={(v) => updateConfig('rightMotor', v)} />
+          </div>
+        </div>
       </div>
 
-      {!useProfile && (
-        <div className="grid grid-cols-4 gap-2 text-sm">
-          <label className="flex items-center gap-1">
-            Left: <select className="px-1 py-0.5 border rounded text-xs"><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option></select>
-          </label>
-          <label className="flex items-center gap-1">
-            Right: <select className="px-1 py-0.5 border rounded text-xs"><option>B</option><option>A</option><option>C</option><option>D</option><option>E</option><option>F</option></select>
-          </label>
-          <label className="flex items-center gap-1">
-            Color: <select className="px-1 py-0.5 border rounded text-xs"><option>C</option><option>A</option><option>B</option><option>D</option><option>E</option><option>F</option><option>None</option></select>
-          </label>
-          <label className="flex items-center gap-1">
-            Dist: <select className="px-1 py-0.5 border rounded text-xs"><option>D</option><option>A</option><option>B</option><option>C</option><option>E</option><option>F</option><option>None</option></select>
-          </label>
+      {/* Attachment Motors */}
+      <div className="mb-3">
+        <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Attachment Motors</h4>
+        <div className="grid grid-cols-2 gap-2">
+          <NameablePort portKey="attachment1" nameKey="attachment1Name" />
+          <NameablePort portKey="attachment2" nameKey="attachment2Name" />
         </div>
-      )}
+      </div>
+
+      {/* Sensors */}
+      <div>
+        <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Sensors</h4>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+            <span className="text-xs font-medium">Color</span>
+            <PortSelect value={config.colorSensor} onChange={(v) => updateConfig('colorSensor', v)} allowNone />
+          </div>
+          <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+            <span className="text-xs font-medium">Ultrasonic</span>
+            <PortSelect value={config.ultrasonicSensor} onChange={(v) => updateConfig('ultrasonicSensor', v)} allowNone />
+          </div>
+          <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+            <span className="text-xs font-medium">Force</span>
+            <PortSelect value={config.forceSensor} onChange={(v) => updateConfig('forceSensor', v)} allowNone />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -18,6 +18,8 @@ interface EditorState {
   showRoutines: boolean;
   setupHeight: number;
   routinesHeight: number;
+  showPythonPanel: boolean;
+  pythonPanelWidth: number;
 
   // Actions
   setCurrentProgram: (program: Program | null) => void;
@@ -35,6 +37,8 @@ interface EditorState {
   setSetupHeight: (height: number) => void;
   setRoutinesHeight: (height: number) => void;
   setShowRoutines: (show: boolean) => void;
+  setShowPythonPanel: (show: boolean) => void;
+  setPythonPanelWidth: (width: number) => void;
 
   updateDefaults: (updates: Partial<Defaults>) => void;
 }
@@ -48,6 +52,8 @@ export const useEditorStore = create<EditorState>((set) => ({
   showRoutines: false,
   setupHeight: 150,
   routinesHeight: 200,
+  showPythonPanel: false,
+  pythonPanelWidth: 300,
 
   setCurrentProgram: (program) => set({ currentProgram: program }),
 
@@ -98,6 +104,8 @@ export const useEditorStore = create<EditorState>((set) => ({
   setSetupHeight: (height) => set({ setupHeight: height }),
   setRoutinesHeight: (height) => set({ routinesHeight: height }),
   setShowRoutines: (show) => set({ showRoutines: show }),
+  setShowPythonPanel: (show) => set({ showPythonPanel: show }),
+  setPythonPanelWidth: (width) => set({ pythonPanelWidth: width }),
 
   updateDefaults: (updates) => set((state) => ({
     defaults: { ...state.defaults, ...updates },

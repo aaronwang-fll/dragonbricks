@@ -8,6 +8,7 @@ interface PathPoint {
 
 interface PreviewState {
   isOpen: boolean;
+  isExpanded: boolean;
   width: number;
   fieldImage: string | null;
   robotPath: PathPoint[];
@@ -18,6 +19,7 @@ interface PreviewState {
 
   // Actions
   setIsOpen: (open: boolean) => void;
+  setIsExpanded: (expanded: boolean) => void;
   setWidth: (width: number) => void;
   setFieldImage: (image: string | null) => void;
   setRobotPath: (path: PathPoint[]) => void;
@@ -30,6 +32,7 @@ interface PreviewState {
 
 export const usePreviewStore = create<PreviewState>((set) => ({
   isOpen: false,
+  isExpanded: false,
   width: 300,
   fieldImage: null,
   robotPath: [],
@@ -39,6 +42,7 @@ export const usePreviewStore = create<PreviewState>((set) => ({
   estimatedTime: 0,
 
   setIsOpen: (open) => set({ isOpen: open }),
+  setIsExpanded: (expanded) => set({ isExpanded: expanded }),
   setWidth: (width) => set({ width: Math.max(200, Math.min(600, width)) }),
   setFieldImage: (image) => set({ fieldImage: image }),
   setRobotPath: (path) => set({ robotPath: path }),

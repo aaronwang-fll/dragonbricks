@@ -1,20 +1,19 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { usePreviewStore } from '../../stores/previewStore';
 import { useEditorStore } from '../../stores/editorStore';
-import { ResizeHandle } from '../shared/ResizeHandle';
 import { calculatePath, generatePathPoints, getPositionAtTime } from '../../lib/preview/pathCalculator';
 import type { CalculatedPath, PathPoint } from '../../lib/preview/pathCalculator';
 
 export function PreviewPanel() {
   const {
     isOpen,
-    width,
+    isExpanded,
     fieldImage,
     startPosition,
     isPlaying,
     playbackSpeed,
     setIsOpen,
-    setWidth,
+    setIsExpanded,
     setFieldImage,
     setIsPlaying,
     setPlaybackSpeed,
@@ -218,134 +217,140 @@ export function PreviewPanel() {
     return seconds.toFixed(1) + 's';
   };
 
+  const panelWidth = isExpanded ? 500 : 280;
+  const canvasHeight = isExpanded ? 400 : 200;
+
   if (!isOpen) {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="w-6 bg-gray-100 hover:bg-gray-200 border-l border-gray-200 flex items-center justify-center"
+        className="w-8 bg-gray-100 hover:bg-gray-200 border-l border-gray-200 flex items-center justify-center"
         title="Open Preview"
       >
-        <span className="text-gray-500">◀</span>
+        <span className="text-gray-500 text-xs">◀</span>
       </button>
     );
   }
 
   return (
-    <>
-      <ResizeHandle
-        direction="horizontal"
-        onResize={(delta) => setWidth(width - delta)}
-      />
-      <aside style={{ width }} className="bg-white border-l border-gray-200 flex flex-col">
-        <div className="flex items-center justify-between p-2 border-b border-gray-200">
-          <span className="text-sm font-semibold">Preview</span>
+    <aside style={{ width: panelWidth }} className="bg-white border-l border-gray-200 flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-2 py-1.5 bg-gray-50 border-b border-gray-200">
+        <span className="text-xs font-semibold text-gray-600 uppercase">Preview</span>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700"
+            title={isExpanded ? 'Collapse' : 'Expand'}
+          >
+            {isExpanded ? '▶' : '◀'}
+          </button>
           <button
             onClick={() => setIsOpen(false)}
-            className="text-gray-400 hover:text-gray-600"
+            className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 rounded text-gray-400 hover:text-gray-600"
+            title="Close"
           >
-            x
+            ×
+          </button>
+        </div>
+      </div>
+
+      {/* Canvas - click to expand */}
+      <div
+        className="p-2 cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+        title="Click to expand/collapse"
+      >
+        <canvas
+          ref={canvasRef}
+          width={panelWidth - 16}
+          height={canvasHeight}
+          className="w-full bg-gray-50 rounded border border-gray-200"
+        />
+      </div>
+
+      {/* Controls - directly under canvas */}
+      <div className="px-2 pb-2 space-y-2">
+        {/* Timeline */}
+        {calculatedPath && calculatedPath.totalTime > 0 && (
+          <div>
+            <div className="flex items-center justify-between text-[10px] text-gray-500 mb-0.5">
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(calculatedPath.totalTime)}</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={calculatedPath.totalTime}
+              value={currentTime}
+              onChange={(e) => setCurrentTime(Number(e.target.value))}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+            />
+          </div>
+        )}
+
+        {/* Playback controls */}
+        <div className="flex items-center gap-1 flex-wrap">
+          <button
+            onClick={(e) => { e.stopPropagation(); setIsPlaying(!isPlaying); }}
+            disabled={!calculatedPath || calculatedPath.totalTime === 0}
+            className="w-7 h-7 flex items-center justify-center bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white text-sm rounded"
+            title={isPlaying ? 'Pause' : 'Play'}
+          >
+            {isPlaying ? '⏸' : '▶'}
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleReset(); }}
+            className="w-7 h-7 flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-sm rounded"
+            title="Reset"
+          >
+            ⟲
+          </button>
+          <select
+            value={playbackSpeed}
+            onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
+            onClick={(e) => e.stopPropagation()}
+            className="px-1 py-1 border border-gray-300 rounded text-[10px] bg-white"
+          >
+            <option value={0.5}>0.5x</option>
+            <option value={1}>1x</option>
+            <option value={2}>2x</option>
+            <option value={4}>4x</option>
+          </select>
+          <div className="flex-1" />
+          <button
+            onClick={(e) => { e.stopPropagation(); handleLoadImage(); }}
+            className="px-2 py-1 bg-gray-200 hover:bg-gray-300 text-[10px] rounded"
+          >
+            {fieldImage ? 'Change Map' : 'Load Map'}
           </button>
         </div>
 
-        <div className="flex-1 p-2 overflow-hidden">
-          <canvas
-            ref={canvasRef}
-            width={width - 20}
-            height={250}
-            className="w-full bg-gray-50 rounded border border-gray-200"
-          />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+      </div>
 
-          {/* Timeline */}
-          {calculatedPath && calculatedPath.totalTime > 0 && (
-            <div className="mt-2">
-              <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(calculatedPath.totalTime)}</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={calculatedPath.totalTime}
-                value={currentTime}
-                onChange={(e) => setCurrentTime(Number(e.target.value))}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-              />
-            </div>
-          )}
+      {/* Legend - compact */}
+      <div className="px-2 py-1.5 border-t border-gray-200 text-[10px] text-gray-500 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="flex items-center gap-0.5">
+            <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Start
+          </span>
+          <span className="flex items-center gap-0.5">
+            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span> Now
+          </span>
+          <span className="flex items-center gap-0.5">
+            <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span> End
+          </span>
         </div>
-
-        <div className="p-2 border-t border-gray-200 space-y-2">
-          <div className="flex gap-1">
-            <button
-              onClick={() => setIsPlaying(!isPlaying)}
-              disabled={!calculatedPath || calculatedPath.totalTime === 0}
-              className="px-2 py-1 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white text-xs rounded"
-            >
-              {isPlaying ? 'Pause' : 'Play'}
-            </button>
-            <button
-              onClick={handleReset}
-              className="px-2 py-1 bg-gray-200 hover:bg-gray-300 text-xs rounded"
-            >
-              Reset
-            </button>
-            <select
-              value={playbackSpeed}
-              onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
-              className="px-1 py-1 border border-gray-300 rounded text-xs"
-            >
-              <option value={0.5}>0.5x</option>
-              <option value={1}>1x</option>
-              <option value={2}>2x</option>
-              <option value={4}>4x</option>
-            </select>
-          </div>
-
-          <div className="flex gap-1">
-            <button
-              onClick={handleLoadImage}
-              className="px-2 py-1 bg-gray-200 hover:bg-gray-300 text-xs rounded"
-            >
-              Load Map
-            </button>
-            {fieldImage && (
-              <button
-                onClick={() => setFieldImage(null)}
-                className="px-2 py-1 bg-gray-200 hover:bg-gray-300 text-xs rounded"
-              >
-                Clear Map
-              </button>
-            )}
-          </div>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            className="hidden"
-          />
-        </div>
-
-        <div className="p-2 bg-yellow-50 border-t border-yellow-200 text-xs text-yellow-700">
-          Path-only preview. Sensors require real robot.
-        </div>
-
-        {/* Legend */}
-        <div className="p-2 border-t border-gray-200 text-xs text-gray-500">
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 bg-green-500 rounded-full"></span> Start
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 bg-blue-500 rounded-full"></span> Current
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 bg-red-500 rounded-full"></span> End
-            </span>
-          </div>
-        </div>
-      </aside>
-    </>
+        <span className="text-yellow-600">Path only</span>
+      </div>
+    </aside>
   );
 }

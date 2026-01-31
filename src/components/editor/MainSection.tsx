@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useEditorStore } from '../../stores/editorStore';
 import { useParser } from '../../hooks/useParser';
 
@@ -12,159 +12,115 @@ interface MainSectionProps {
 
 export function MainSection({ onClarificationNeeded }: MainSectionProps) {
   const [input, setInput] = useState('');
-  const [isParsed, setIsParsed] = useState(false);
-  const { commands, expandedCommands, toggleCommandExpanded, expandAllCommands, collapseAllCommands } = useEditorStore();
+  const { commands } = useEditorStore();
   const { parseInput } = useParser();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleParse = useCallback(() => {
-    if (!input.trim()) return;
-
-    const parsedCommands = parseInput(input);
-    setIsParsed(true);
-
-    // Check for clarifications needed
-    const needsClarification = parsedCommands.find(cmd => cmd.status === 'needs-clarification');
-    if (needsClarification && needsClarification.clarification && onClarificationNeeded) {
-      onClarificationNeeded(needsClarification.id, needsClarification.clarification);
+  // Parse input with debounce
+  useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
     }
+
+    debounceRef.current = setTimeout(() => {
+      if (input.trim()) {
+        const parsedCommands = parseInput(input);
+
+        // Check for clarifications needed
+        const needsClarification = parsedCommands.find(cmd => cmd.status === 'needs-clarification');
+        if (needsClarification && needsClarification.clarification && onClarificationNeeded) {
+          onClarificationNeeded(needsClarification.id, needsClarification.clarification);
+        }
+      }
+    }, 300);
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
   }, [input, parseInput, onClarificationNeeded]);
 
-  const handleEdit = useCallback(() => {
-    // Go back to editing mode
-    const currentText = commands.map(cmd => cmd.naturalLanguage).join('\n');
-    setInput(currentText);
-    setIsParsed(false);
+  const getStatusIcon = useCallback((status: string) => {
+    switch (status) {
+      case 'parsed':
+        return <span className="text-green-500 text-xs">✓</span>;
+      case 'needs-clarification':
+        return <span className="text-yellow-500 text-xs">?</span>;
+      case 'error':
+        return <span className="text-red-500 text-xs">!</span>;
+      default:
+        return <span className="text-gray-400 text-xs">○</span>;
+    }
+  }, []);
+
+  const getLineStatus = useCallback((lineIndex: number) => {
+    const cmd = commands[lineIndex];
+    return cmd ? cmd.status : 'pending';
   }, [commands]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    // Ctrl/Cmd + Enter to parse
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-      e.preventDefault();
-      handleParse();
-    }
-  }, [handleParse]);
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'parsed':
-        return <span className="text-green-500">✓</span>;
-      case 'needs-clarification':
-        return <span className="text-yellow-500">?</span>;
-      case 'error':
-        return <span className="text-red-500">✗</span>;
-      default:
-        return <span className="text-gray-400">○</span>;
-    }
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'parsed':
-        return 'border-l-green-500';
-      case 'needs-clarification':
-        return 'border-l-yellow-500';
-      case 'error':
-        return 'border-l-red-500';
-      default:
-        return 'border-l-gray-300';
-    }
-  };
+  const lines = input.split('\n');
 
   return (
-    <div className="flex-1 flex flex-col bg-white">
-      <div className="flex-1 p-3 overflow-y-auto">
-        {!isParsed || commands.length === 0 ? (
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={`Type natural language commands here...\n\nExamples:\n  move forward 200mm\n  turn right 90 degrees\n  wait 1 second\n\nPress Ctrl+Enter to parse`}
-            className="w-full h-full resize-none border-0 outline-none text-sm font-mono"
-            autoFocus
-          />
-        ) : (
-          <div className="space-y-1">
-            {commands.map((cmd) => (
-              <div
-                key={cmd.id}
-                className={`group border-l-2 pl-2 ${getStatusColor(cmd.status)}`}
-              >
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => toggleCommandExpanded(cmd.id)}
-                    className="text-gray-400 hover:text-gray-600 w-4"
-                  >
-                    {expandedCommands.has(cmd.id) ? '▼' : '▶'}
-                  </button>
-                  {getStatusIcon(cmd.status)}
-                  <span className="text-sm font-mono flex-1">{cmd.naturalLanguage}</span>
-                </div>
-
-                {expandedCommands.has(cmd.id) && (
-                  <div className="ml-8 mt-1">
-                    {cmd.pythonCode && (
-                      <pre className="p-2 bg-gray-50 text-xs text-gray-600 rounded">
-                        {cmd.pythonCode}
-                      </pre>
-                    )}
-                    {cmd.error && (
-                      <p className="p-2 bg-red-50 text-xs text-red-600 rounded">
-                        {cmd.error}
-                      </p>
-                    )}
-                    {cmd.clarification && (
-                      <p className="p-2 bg-yellow-50 text-xs text-yellow-700 rounded">
-                        {cmd.clarification.message}
-                      </p>
-                    )}
-                  </div>
-                )}
+    <div className="flex-1 flex flex-col bg-white overflow-hidden">
+      <div className="flex-1 flex overflow-hidden">
+        {/* Line status indicators */}
+        <div className="w-8 bg-gray-50 border-r border-gray-200 flex-shrink-0 overflow-hidden">
+          <div className="pt-3 px-1">
+            {lines.map((_, i) => (
+              <div key={i} className="h-5 flex items-center justify-center">
+                {input.trim() && lines[i]?.trim() && getStatusIcon(getLineStatus(i))}
               </div>
             ))}
           </div>
-        )}
-      </div>
-
-      <div className="p-2 border-t border-gray-200 flex justify-between items-center">
-        <div className="flex gap-2">
-          {!isParsed ? (
-            <button
-              onClick={handleParse}
-              disabled={!input.trim()}
-              className="px-3 py-1 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white text-sm rounded"
-            >
-              Parse
-            </button>
-          ) : (
-            <>
-              <button
-                onClick={handleEdit}
-                className="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-sm rounded"
-              >
-                Edit
-              </button>
-              <button
-                onClick={expandAllCommands}
-                className="text-sm text-blue-600 hover:text-blue-800"
-              >
-                Expand All
-              </button>
-              <button
-                onClick={collapseAllCommands}
-                className="text-sm text-blue-600 hover:text-blue-800"
-              >
-                Collapse All
-              </button>
-            </>
-          )}
         </div>
 
-        {isParsed && commands.length > 0 && (
-          <div className="text-xs text-gray-500">
-            {commands.filter(c => c.status === 'parsed').length}/{commands.length} parsed
-          </div>
-        )}
+        {/* Editor area */}
+        <div className="flex-1 relative overflow-hidden">
+          <textarea
+            value={input}
+            onChange={handleInputChange}
+            placeholder={`Type commands in plain English...
+
+Examples:
+  move forward 200mm
+  turn right 90 degrees
+  wait 1 second
+  run grabber motor 180 degrees
+
+Commands are parsed as you type.
+Python code appears in the right panel.`}
+            className="absolute inset-0 w-full h-full resize-none border-0 outline-none text-sm font-mono p-3 leading-5"
+            spellCheck={false}
+          />
+        </div>
       </div>
+
+      {/* Footer status */}
+      {commands.length > 0 && (
+        <div className="px-3 py-1 border-t border-gray-200 text-xs text-gray-500 flex items-center gap-3 bg-gray-50">
+          <span className="flex items-center gap-1">
+            <span className="text-green-500">✓</span>
+            {commands.filter(c => c.status === 'parsed').length} parsed
+          </span>
+          {commands.filter(c => c.status === 'needs-clarification').length > 0 && (
+            <span className="flex items-center gap-1">
+              <span className="text-yellow-500">?</span>
+              {commands.filter(c => c.status === 'needs-clarification').length} need input
+            </span>
+          )}
+          {commands.filter(c => c.status === 'error').length > 0 && (
+            <span className="flex items-center gap-1">
+              <span className="text-red-500">!</span>
+              {commands.filter(c => c.status === 'error').length} errors
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

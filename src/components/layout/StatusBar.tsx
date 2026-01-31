@@ -1,26 +1,54 @@
 import { useConnectionStore } from '../../stores/connectionStore';
+import { useBluetooth } from '../../hooks/useBluetooth';
 
 export function StatusBar() {
   const { status, error } = useConnectionStore();
+  const { isSupported, connect, disconnect } = useBluetooth();
 
-  const statusText = {
-    disconnected: 'Disconnected',
-    connecting: 'Connecting...',
-    connected: 'Hub Connected',
-    error: 'Connection Error',
+  const isConnected = status === 'connected';
+  const isConnecting = status === 'connecting';
+
+  const handleConnect = async () => {
+    if (isConnected) {
+      await disconnect();
+    } else {
+      await connect();
+    }
   };
 
-  const statusColor = {
-    disconnected: 'text-gray-500',
-    connecting: 'text-yellow-600',
-    connected: 'text-green-600',
-    error: 'text-red-600',
+  const statusConfig = {
+    disconnected: { text: 'Disconnected', bg: 'bg-gray-200', dot: 'bg-gray-400' },
+    connecting: { text: 'Connecting...', bg: 'bg-yellow-100', dot: 'bg-yellow-500 animate-pulse' },
+    connected: { text: 'Connected', bg: 'bg-green-100', dot: 'bg-green-500' },
+    error: { text: 'Error', bg: 'bg-red-100', dot: 'bg-red-500' },
   };
+
+  const config = statusConfig[status];
 
   return (
-    <footer className="h-6 bg-gray-100 border-t border-gray-200 flex items-center justify-between px-4 text-xs text-gray-600">
-      <span>Status: Ready</span>
-      <span className={statusColor[status]}>{error || statusText[status]}</span>
+    <footer className="h-8 bg-gray-50 border-t border-gray-300 flex items-center justify-between px-4 text-sm">
+      <div className="flex items-center gap-4">
+        <span className="text-gray-600">DragonBricks</span>
+      </div>
+
+      <div className="flex items-center gap-3">
+        {error && (
+          <span className="text-red-600 text-xs">{error}</span>
+        )}
+
+        <button
+          onClick={handleConnect}
+          disabled={!isSupported || isConnecting}
+          className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-colors ${config.bg} hover:opacity-80 disabled:opacity-50`}
+        >
+          <span className={`w-2 h-2 rounded-full ${config.dot}`} />
+          {isConnecting ? 'Connecting...' : isConnected ? 'Connected' : 'Connect Hub'}
+        </button>
+
+        {!isSupported && (
+          <span className="text-xs text-red-500">Bluetooth unavailable</span>
+        )}
+      </div>
     </footer>
   );
 }

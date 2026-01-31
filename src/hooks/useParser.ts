@@ -1,19 +1,60 @@
 import { useCallback } from 'react';
 import { useEditorStore } from '../stores/editorStore';
 import { parseCommand } from '../lib/parser';
-import type { ParsedCommand } from '../types';
+import { extractRoutines, isRoutineCall, generateRoutineCall } from '../lib/parser/routines';
+import type { ParsedCommand, Routine } from '../types';
 
 export function useParser() {
-  const { defaults, setCommands, updateCommand } = useEditorStore();
+  const { defaults, setCommands, updateCommand, currentProgram, updateProgram } = useEditorStore();
 
   const parseInput = useCallback((input: string): ParsedCommand[] => {
-    // Split input into lines, each line is a command
-    const lines = input
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0 && !line.startsWith('#')); // Skip empty lines and comments
+    // First, extract routine definitions from the input
+    const { routines: parsedRoutines, mainCode } = extractRoutines(input, defaults);
 
-    const commands: ParsedCommand[] = lines.map((line, index) => {
+    // Get existing routine names for routine call detection
+    const existingRoutines = currentProgram?.routines || [];
+    const routineNames = [
+      ...existingRoutines.map(r => r.name),
+      ...parsedRoutines.map(r => r.routine.name),
+    ];
+
+    // If we found new routine definitions, save them
+    if (parsedRoutines.length > 0 && currentProgram) {
+      const newRoutines: Routine[] = parsedRoutines.map(pr => pr.routine);
+      // Merge with existing, avoiding duplicates by name
+      const mergedRoutines = [...existingRoutines];
+      for (const newRoutine of newRoutines) {
+        const existingIdx = mergedRoutines.findIndex(r => r.name === newRoutine.name);
+        if (existingIdx >= 0) {
+          mergedRoutines[existingIdx] = newRoutine;
+        } else {
+          mergedRoutines.push(newRoutine);
+        }
+      }
+      updateProgram(currentProgram.id, { routines: mergedRoutines });
+    }
+
+    // Parse the main code (non-routine lines)
+    const commands: ParsedCommand[] = mainCode.map((line, index) => {
+      // First check if this is a routine call
+      const routineCheck = isRoutineCall(line, routineNames);
+      if (routineCheck.isCall && routineCheck.routineName) {
+        const args: Record<string, string | number> = {};
+        if (routineCheck.args) {
+          routineCheck.args.forEach((arg, i) => {
+            args[`arg${i}`] = arg;
+          });
+        }
+        const pythonCode = generateRoutineCall(routineCheck.routineName, args);
+        return {
+          id: `cmd-${index}-${Date.now()}`,
+          naturalLanguage: line,
+          pythonCode,
+          status: 'parsed' as const,
+        };
+      }
+
+      // Otherwise parse as regular command
       const result = parseCommand(line, defaults);
 
       return {
@@ -32,7 +73,7 @@ export function useParser() {
 
     setCommands(commands);
     return commands;
-  }, [defaults, setCommands]);
+  }, [defaults, setCommands, currentProgram, updateProgram]);
 
   const parseSingleCommand = useCallback((input: string): ParsedCommand => {
     const result = parseCommand(input, defaults);
