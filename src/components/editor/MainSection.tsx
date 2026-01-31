@@ -280,7 +280,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                   {line.trim() && getStatusIcon(status)}
                 </div>
 
-                {/* Natural language input */}
+                {/* Natural language input - fixed width */}
                 <input
                   ref={el => inputRefs.current[index] = el}
                   type="text"
@@ -288,7 +288,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                   onChange={(e) => handleLineChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   placeholder={index === 0 && !line ? 'Type a command... (e.g., move forward 200mm)' : ''}
-                  className="flex-1 bg-transparent text-sm font-mono text-white placeholder-gray-600 py-2 px-2 outline-none border-0 min-w-0"
+                  className="w-64 flex-shrink-0 bg-transparent text-sm font-mono text-white placeholder-gray-600 py-2 px-2 outline-none border-0"
                   spellCheck={false}
                 />
 
@@ -296,35 +296,39 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                 {hasCode && !isExpanded && (
                   <button
                     onClick={() => toggleLine(index)}
-                    className="px-2 h-8 flex items-center justify-center text-gray-500 hover:text-white hover:bg-gray-700 transition-colors flex-shrink-0"
+                    className="px-1 h-8 flex items-center justify-center text-gray-500 hover:text-white hover:bg-gray-700 transition-colors flex-shrink-0"
                     title="Show Python"
                   >
                     <span className="text-xs">▶</span>
                   </button>
                 )}
-                {!hasCode && line.trim() && <div className="w-8 flex-shrink-0" />}
-              </div>
 
-              {/* Python code on separate line (shown when expanded) */}
-              {hasCode && isExpanded && (
-                <div className="flex items-center bg-gray-800/50 ml-8 mr-2 mb-1 rounded">
-                  <div className="flex-1 text-xs font-mono text-gray-300 px-2 py-1.5 overflow-x-auto">
-                    {pythonCode.split('\n').map((codeLine, i) => (
-                      <span key={i} className={codeLine.startsWith('#') ? 'text-gray-500' : 'text-gray-300'}>
-                        {codeLine}{i < pythonCode.split('\n').length - 1 ? ' | ' : ''}
+                {/* Inline Python code (shown when expanded) */}
+                {hasCode && isExpanded && (
+                  <>
+                    <div className="flex-1 text-xs font-mono text-gray-400 px-2 py-2 overflow-hidden">
+                      <span className="whitespace-nowrap">
+                        {pythonCode.split('\n').map((codeLine, i) => (
+                          <span key={i} className={codeLine.startsWith('#') ? 'text-gray-500' : 'text-gray-400'}>
+                            {codeLine}{i < pythonCode.split('\n').length - 1 ? ' | ' : ''}
+                          </span>
+                        ))}
                       </span>
-                    ))}
-                  </div>
-                  {/* Collapse arrow at end of Python */}
-                  <button
-                    onClick={() => toggleLine(index)}
-                    className="px-2 h-6 flex items-center justify-center text-gray-500 hover:text-white hover:bg-gray-700 transition-colors flex-shrink-0 rounded"
-                    title="Hide Python"
-                  >
-                    <span className="text-xs">◀</span>
-                  </button>
-                </div>
-              )}
+                    </div>
+                    {/* Collapse arrow at end */}
+                    <button
+                      onClick={() => toggleLine(index)}
+                      className="px-1 h-8 flex items-center justify-center text-gray-500 hover:text-white hover:bg-gray-700 transition-colors flex-shrink-0"
+                      title="Hide Python"
+                    >
+                      <span className="text-xs">◀</span>
+                    </button>
+                  </>
+                )}
+
+                {/* Spacer when no code */}
+                {!hasCode && line.trim() && <div className="flex-1" />}
+              </div>
             </div>
           );
         })}
