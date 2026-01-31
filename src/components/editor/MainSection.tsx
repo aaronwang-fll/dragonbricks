@@ -267,6 +267,9 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
           const hasCode = line.trim() && pythonCode;
           const isClickable = status === 'needs-clarification';
 
+          // Calculate input width based on content
+          const inputWidth = Math.max(200, Math.min(400, (line.length + 1) * 9.6));
+
           return (
             <div key={index} className="border-b border-gray-800">
               {/* Main row */}
@@ -280,7 +283,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                   {line.trim() && getStatusIcon(status)}
                 </div>
 
-                {/* Natural language input - fixed width */}
+                {/* Natural language input - auto-width based on content */}
                 <input
                   ref={el => inputRefs.current[index] = el}
                   type="text"
@@ -288,7 +291,8 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                   onChange={(e) => handleLineChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   placeholder={index === 0 && !line ? 'Type a command... (e.g., move forward 200mm)' : ''}
-                  className="w-64 flex-shrink-0 bg-transparent text-sm font-mono text-white placeholder-gray-600 py-2 px-2 outline-none border-0"
+                  style={{ width: line ? inputWidth : 300 }}
+                  className="flex-shrink-0 bg-transparent text-sm font-mono text-white placeholder-gray-600 py-2 px-2 outline-none border-0"
                   spellCheck={false}
                 />
 
@@ -306,14 +310,12 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                 {/* Inline Python code (shown when expanded) */}
                 {hasCode && isExpanded && (
                   <>
-                    <div className="flex-1 text-xs font-mono text-gray-400 px-2 py-2 overflow-hidden">
-                      <span className="whitespace-nowrap">
-                        {pythonCode.split('\n').map((codeLine, i) => (
-                          <span key={i} className={codeLine.startsWith('#') ? 'text-gray-500' : 'text-gray-400'}>
-                            {codeLine}{i < pythonCode.split('\n').length - 1 ? ' | ' : ''}
-                          </span>
-                        ))}
-                      </span>
+                    <div className="flex-1 text-xs font-mono text-gray-400 px-2 py-2 min-w-0 truncate">
+                      {pythonCode.split('\n').map((codeLine, i) => (
+                        <span key={i} className={codeLine.startsWith('#') ? 'text-gray-500' : 'text-gray-400'}>
+                          {codeLine}{i < pythonCode.split('\n').length - 1 ? ' | ' : ''}
+                        </span>
+                      ))}
                     </div>
                     {/* Collapse arrow at end */}
                     <button
@@ -326,8 +328,8 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                   </>
                 )}
 
-                {/* Spacer when no code */}
-                {!hasCode && line.trim() && <div className="flex-1" />}
+                {/* Fill remaining space when collapsed or no code */}
+                {(!hasCode || !isExpanded) && <div className="flex-1" />}
               </div>
             </div>
           );
