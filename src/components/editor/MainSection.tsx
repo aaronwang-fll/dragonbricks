@@ -69,10 +69,10 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
   const lines = input.split('\n');
 
   return (
-    <div className="flex-1 flex flex-col bg-white overflow-hidden">
+    <div className="flex-1 flex flex-col bg-white dark:bg-gray-800 overflow-hidden">
       <div className="flex-1 flex overflow-hidden">
         {/* Line status indicators - clickable for clarification */}
-        <div className="w-8 bg-gray-50 border-r border-gray-200 flex-shrink-0 overflow-hidden">
+        <div className="w-8 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex-shrink-0 overflow-hidden">
           <div className="pt-3 px-1">
             {lines.map((_, i) => {
               const status = getLineStatus(i);
@@ -80,7 +80,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
               return (
                 <div
                   key={i}
-                  className={`h-5 flex items-center justify-center ${isClickable ? 'cursor-pointer hover:bg-yellow-100 rounded' : ''}`}
+                  className={`h-5 flex items-center justify-center ${isClickable ? 'cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-900/30 rounded' : ''}`}
                   onClick={() => isClickable && handleLineClick(i)}
                   title={isClickable ? 'Click to provide missing value' : undefined}
                 >
@@ -106,7 +106,7 @@ Examples:
 
 Commands are parsed as you type.
 Python code appears in the right panel.`}
-            className="absolute inset-0 w-full h-full resize-none border-0 outline-none text-sm font-mono p-3 leading-5"
+            className="absolute inset-0 w-full h-full resize-none border-0 outline-none text-sm font-mono p-3 leading-5 bg-white dark:bg-gray-800 dark:text-white dark:placeholder-gray-500"
             spellCheck={false}
           />
         </div>
@@ -114,7 +114,7 @@ Python code appears in the right panel.`}
 
       {/* Footer status */}
       {commands.length > 0 && (
-        <div className="px-3 py-1 border-t border-gray-200 text-xs text-gray-500 flex items-center gap-3 bg-gray-50">
+        <div className="px-3 py-1 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-3 bg-gray-50 dark:bg-gray-900">
           <span className="flex items-center gap-1">
             <span className="text-green-500">✓</span>
             {commands.filter(c => c.status === 'parsed').length} parsed

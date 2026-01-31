@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { usePreviewStore } from '../../stores/previewStore';
 import { useEditorStore } from '../../stores/editorStore';
+import { useThemeStore } from '../../stores/themeStore';
 import { calculatePath, generatePathPoints, getPositionAtTime } from '../../lib/preview/pathCalculator';
 import type { CalculatedPath, PathPoint } from '../../lib/preview/pathCalculator';
 
@@ -22,6 +23,7 @@ export function PreviewPanel() {
   } = usePreviewStore();
 
   const { commands, defaults } = useEditorStore();
+  const { mode } = useThemeStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const animationRef = useRef<number | null>(null);
@@ -29,6 +31,16 @@ export function PreviewPanel() {
   const [calculatedPath, setCalculatedPath] = useState<CalculatedPath | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [pathPoints, setPathPoints] = useState<PathPoint[]>([]);
+
+  // Theme-aware colors
+  const isDark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const colors = {
+    grid: isDark ? '#374151' : '#e5e7eb',
+    path: '#3b82f6',
+    start: '#22c55e',
+    current: '#3b82f6',
+    end: '#ef4444',
+  };
 
   // Calculate path when commands change
   useEffect(() => {
@@ -113,7 +125,7 @@ export function PreviewPanel() {
     }
 
     function drawGrid(ctx: CanvasRenderingContext2D, width: number, height: number) {
-      ctx.strokeStyle = '#e5e7eb';
+      ctx.strokeStyle = colors.grid;
       ctx.lineWidth = 1;
 
       // Draw vertical lines
@@ -138,7 +150,7 @@ export function PreviewPanel() {
 
       // Draw path line
       ctx.beginPath();
-      ctx.strokeStyle = '#3b82f6';
+      ctx.strokeStyle = colors.path;
       ctx.lineWidth = 2;
       ctx.setLineDash([5, 5]);
 
@@ -150,17 +162,17 @@ export function PreviewPanel() {
       ctx.setLineDash([]);
 
       // Draw start position
-      drawRobot(ctx, { ...startPosition, timestamp: 0 }, '#22c55e'); // green
+      drawRobot(ctx, { ...startPosition, timestamp: 0 }, colors.start);
 
       // Draw current position if playing
       if (calculatedPath && currentTime > 0) {
         const currentPos = getPositionAtTime(calculatedPath, currentTime);
-        drawRobot(ctx, currentPos, '#3b82f6'); // blue
+        drawRobot(ctx, currentPos, colors.current);
       }
 
       // Draw end position
       if (calculatedPath) {
-        drawRobot(ctx, calculatedPath.endPosition, '#ef4444'); // red
+        drawRobot(ctx, calculatedPath.endPosition, colors.end);
       }
     }
 
@@ -190,7 +202,7 @@ export function PreviewPanel() {
 
       ctx.restore();
     }
-  }, [pathPoints, startPosition, calculatedPath, currentTime, fieldImage]);
+  }, [pathPoints, startPosition, calculatedPath, currentTime, fieldImage, colors.grid, colors.path, colors.start, colors.current, colors.end]);
 
   const handleLoadImage = () => {
     fileInputRef.current?.click();
@@ -224,30 +236,30 @@ export function PreviewPanel() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="w-8 bg-gray-100 hover:bg-gray-200 border-l border-gray-200 flex items-center justify-center"
+        className="w-8 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 border-l border-gray-200 dark:border-gray-700 flex items-center justify-center"
         title="Open Preview"
       >
-        <span className="text-gray-500 text-xs">◀</span>
+        <span className="text-gray-500 dark:text-gray-400 text-xs">◀</span>
       </button>
     );
   }
 
   return (
-    <aside style={{ width: panelWidth }} className="bg-white border-l border-gray-200 flex flex-col overflow-hidden">
+    <aside style={{ width: panelWidth }} className="bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-2 py-1.5 bg-gray-50 border-b border-gray-200">
-        <span className="text-xs font-semibold text-gray-600 uppercase">Preview</span>
+      <div className="flex items-center justify-between px-2 py-1.5 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+        <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Preview</span>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700"
+            className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
             title={isExpanded ? 'Collapse' : 'Expand'}
           >
             {isExpanded ? '▶' : '◀'}
           </button>
           <button
             onClick={() => setIsOpen(false)}
-            className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 rounded text-gray-400 hover:text-gray-600"
+            className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
             title="Close"
           >
             ×
@@ -265,7 +277,7 @@ export function PreviewPanel() {
           ref={canvasRef}
           width={panelWidth - 16}
           height={canvasHeight}
-          className="w-full bg-gray-50 rounded border border-gray-200"
+          className="w-full bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700"
         />
       </div>
 
@@ -274,7 +286,7 @@ export function PreviewPanel() {
         {/* Timeline */}
         {calculatedPath && calculatedPath.totalTime > 0 && (
           <div>
-            <div className="flex items-center justify-between text-[10px] text-gray-500 mb-0.5">
+            <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400 mb-0.5">
               <span>{formatTime(currentTime)}</span>
               <span>{formatTime(calculatedPath.totalTime)}</span>
             </div>
@@ -285,7 +297,7 @@ export function PreviewPanel() {
               value={currentTime}
               onChange={(e) => setCurrentTime(Number(e.target.value))}
               onClick={(e) => e.stopPropagation()}
-              className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+              className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
             />
           </div>
         )}
@@ -295,14 +307,14 @@ export function PreviewPanel() {
           <button
             onClick={(e) => { e.stopPropagation(); setIsPlaying(!isPlaying); }}
             disabled={!calculatedPath || calculatedPath.totalTime === 0}
-            className="w-7 h-7 flex items-center justify-center bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white text-sm rounded"
+            className="w-7 h-7 flex items-center justify-center bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white text-sm rounded"
             title={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? '⏸' : '▶'}
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); handleReset(); }}
-            className="w-7 h-7 flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-sm rounded"
+            className="w-7 h-7 flex items-center justify-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-sm rounded dark:text-gray-200"
             title="Reset"
           >
             ⟲
@@ -311,7 +323,7 @@ export function PreviewPanel() {
             value={playbackSpeed}
             onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
             onClick={(e) => e.stopPropagation()}
-            className="px-1 py-1 border border-gray-300 rounded text-[10px] bg-white"
+            className="px-1 py-1 border border-gray-300 dark:border-gray-600 rounded text-[10px] bg-white dark:bg-gray-700 dark:text-white"
           >
             <option value={0.5}>0.5x</option>
             <option value={1}>1x</option>
@@ -321,7 +333,7 @@ export function PreviewPanel() {
           <div className="flex-1" />
           <button
             onClick={(e) => { e.stopPropagation(); handleLoadImage(); }}
-            className="px-2 py-1 bg-gray-200 hover:bg-gray-300 text-[10px] rounded"
+            className="px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-[10px] rounded dark:text-gray-200"
           >
             {fieldImage ? 'Change Map' : 'Load Map'}
           </button>
@@ -337,7 +349,7 @@ export function PreviewPanel() {
       </div>
 
       {/* Legend - compact */}
-      <div className="px-2 py-1.5 border-t border-gray-200 text-[10px] text-gray-500 flex items-center justify-between">
+      <div className="px-2 py-1.5 border-t border-gray-200 dark:border-gray-700 text-[10px] text-gray-500 dark:text-gray-400 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="flex items-center gap-0.5">
             <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Start
@@ -349,7 +361,7 @@ export function PreviewPanel() {
             <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span> End
           </span>
         </div>
-        <span className="text-yellow-600">Path only</span>
+        <span className="text-yellow-600 dark:text-yellow-500">Path only</span>
       </div>
     </aside>
   );

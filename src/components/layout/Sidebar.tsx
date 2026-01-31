@@ -78,9 +78,9 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-48 bg-white border-r border-gray-200 flex flex-col">
+    <aside className="w-48 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
       {/* New button at top */}
-      <div className="p-2 border-b border-gray-200">
+      <div className="p-2 border-b border-gray-200 dark:border-gray-700">
         <button
           onClick={handleNewFile}
           className="w-full px-3 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded flex items-center justify-center gap-2"
@@ -90,8 +90,8 @@ export function Sidebar() {
       </div>
 
       {/* Files header */}
-      <div className="px-3 py-2 bg-gray-50">
-        <span className="text-xs font-semibold text-gray-500 uppercase">Programs ({programs.length})</span>
+      <div className="px-3 py-2 bg-gray-50 dark:bg-gray-900">
+        <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Programs ({programs.length})</span>
       </div>
 
       {/* File list */}
@@ -106,7 +106,7 @@ export function Sidebar() {
               key={program.id}
               onContextMenu={(e) => handleContextMenu(e, program.id)}
               className={`group relative ${
-                currentProgram?.id === program.id ? 'bg-blue-50' : 'hover:bg-gray-50'
+                currentProgram?.id === program.id ? 'bg-blue-50 dark:bg-blue-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-700'
               }`}
             >
               {editingId === program.id ? (
@@ -119,14 +119,14 @@ export function Sidebar() {
                     if (e.key === 'Enter') handleSaveRename();
                     if (e.key === 'Escape') setEditingId(null);
                   }}
-                  className="w-full px-3 py-2 text-sm border-0 bg-white focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border-0 bg-white dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500"
                   autoFocus
                 />
               ) : (
                 <button
                   onClick={() => setCurrentProgram(program)}
                   className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${
-                    currentProgram?.id === program.id ? 'text-blue-700' : 'text-gray-700'
+                    currentProgram?.id === program.id ? 'text-blue-700 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'
                   }`}
                 >
                   <span>📄</span>
@@ -141,14 +141,14 @@ export function Sidebar() {
       {/* New file dialog */}
       {showNewDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-4 w-80 shadow-xl">
-            <h3 className="text-lg font-semibold mb-3">New Program</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 w-80 shadow-xl">
+            <h3 className="text-lg font-semibold mb-3 dark:text-white">New Program</h3>
             <input
               type="text"
               value={newFileName}
               onChange={(e) => setNewFileName(e.target.value)}
               placeholder="Program name"
-              className="w-full px-3 py-2 border border-gray-300 rounded mb-3"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded mb-3 bg-white dark:bg-gray-700 dark:text-white"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleCreateFile();
@@ -158,7 +158,7 @@ export function Sidebar() {
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setShowNewDialog(false)}
-                className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded"
+                className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
               >
                 Cancel
               </button>
@@ -181,25 +181,25 @@ export function Sidebar() {
             onClick={() => setContextMenu(null)}
           />
           <div
-            className="fixed z-50 bg-white rounded-lg shadow-xl border border-gray-200 py-1 min-w-32"
+            className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 min-w-32"
             style={{ left: contextMenu.x, top: contextMenu.y }}
           >
             <button
               onClick={() => handleRename(contextMenu.id)}
-              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300 flex items-center gap-2"
             >
               ✏️ Rename
             </button>
             <button
               onClick={() => handleExport(contextMenu.id)}
-              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300 flex items-center gap-2"
             >
               📤 Export
             </button>
-            <hr className="my-1" />
+            <hr className="my-1 dark:border-gray-700" />
             <button
               onClick={() => handleDelete(contextMenu.id)}
-              className="w-full px-3 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm hover:bg-red-50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center gap-2"
             >
               🗑️ Delete
             </button>

@@ -83,10 +83,10 @@ export function RoutinesSection() {
   }, []);
 
   return (
-    <div className="bg-white border-t border-gray-200 h-full overflow-hidden flex flex-col">
+    <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 h-full overflow-hidden flex flex-col">
       <button
         onClick={() => setShowRoutines(!showRoutines)}
-        className="w-full px-3 py-2 flex items-center justify-between text-sm font-medium text-gray-700 hover:bg-gray-50"
+        className="w-full px-3 py-2 flex items-center justify-between text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
         aria-expanded={showRoutines}
         aria-controls="routines-panel"
       >
@@ -111,13 +111,13 @@ export function RoutinesSection() {
       {showRoutines && (
         <div id="routines-panel" className="p-3 pt-0 overflow-y-auto flex-1">
           {routines.length === 0 ? (
-            <div className="text-sm text-gray-500 italic py-2">
+            <div className="text-sm text-gray-500 dark:text-gray-400 italic py-2">
               <p>No routines defined.</p>
               <p className="mt-1 text-xs">
                 Routines are reusable command sequences.
                 Click "+ Add" to create one, or type in the editor:
               </p>
-              <pre className="mt-2 p-2 bg-gray-50 rounded text-xs font-mono">
+              <pre className="mt-2 p-2 bg-gray-50 dark:bg-gray-700 rounded text-xs font-mono dark:text-gray-300">
 {`Define turn_around:
   turn right 180 degrees
 
@@ -136,11 +136,11 @@ Define square with size:
               {routines.map((routine) => (
                 <div
                   key={routine.id}
-                  className="border border-gray-200 rounded overflow-hidden"
+                  className="border border-gray-200 dark:border-gray-700 rounded overflow-hidden"
                 >
                   {/* Routine header */}
                   <div
-                    className="flex items-center justify-between p-2 bg-gray-50 cursor-pointer hover:bg-gray-100"
+                    className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
                     onClick={() => toggleRoutine(routine.id)}
                     role="button"
                     aria-expanded={expandedRoutine === routine.id}
@@ -149,11 +149,11 @@ Define square with size:
                       <span className="text-gray-400">
                         {expandedRoutine === routine.id ? '▼' : '▶'}
                       </span>
-                      <span className="font-mono text-sm font-medium">
+                      <span className="font-mono text-sm font-medium dark:text-gray-200">
                         {routine.name}
                       </span>
                       {routine.parameters.length > 0 && (
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
                           ({routine.parameters.join(', ')})
                         </span>
                       )}
@@ -163,7 +163,7 @@ Define square with size:
                         e.stopPropagation();
                         handleDeleteRoutine(routine.id);
                       }}
-                      className="text-gray-400 hover:text-red-500 text-xs px-1"
+                      className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 text-xs px-1"
                       aria-label={`Delete routine ${routine.name}`}
                     >
                       ×
@@ -172,39 +172,39 @@ Define square with size:
 
                   {/* Routine body */}
                   {expandedRoutine === routine.id && (
-                    <div className="p-2 border-t border-gray-200">
+                    <div className="p-2 border-t border-gray-200 dark:border-gray-700">
                       {/* Name and parameters */}
                       <div className="grid grid-cols-2 gap-2 mb-2">
                         <div>
-                          <label className="text-xs text-gray-500 block mb-1">Name</label>
+                          <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Name</label>
                           <input
                             type="text"
                             value={routine.name}
                             onChange={(e) => handleRenameRoutine(routine.id, e.target.value)}
-                            className="w-full px-2 py-1 text-xs font-mono border border-gray-300 rounded"
+                            className="w-full px-2 py-1 text-xs font-mono border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 dark:text-white"
                           />
                         </div>
                         <div>
-                          <label className="text-xs text-gray-500 block mb-1">Parameters (comma-separated)</label>
+                          <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Parameters (comma-separated)</label>
                           <input
                             type="text"
                             value={routine.parameters.join(', ')}
                             onChange={(e) => handleUpdateParameters(routine.id, e.target.value)}
                             placeholder="e.g., distance, angle"
-                            className="w-full px-2 py-1 text-xs font-mono border border-gray-300 rounded"
+                            className="w-full px-2 py-1 text-xs font-mono border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 dark:text-white"
                           />
                         </div>
                       </div>
 
                       {/* Body editor */}
                       <div>
-                        <label className="text-xs text-gray-500 block mb-1">Commands</label>
+                        <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Commands</label>
                         {editingRoutine === routine.id ? (
                           <div>
                             <textarea
                               value={editValue}
                               onChange={(e) => setEditValue(e.target.value)}
-                              className="w-full h-24 px-2 py-1 text-xs font-mono border border-gray-300 rounded resize-none"
+                              className="w-full h-24 px-2 py-1 text-xs font-mono border border-gray-300 dark:border-gray-600 rounded resize-none bg-white dark:bg-gray-700 dark:text-white"
                               placeholder="move forward 100mm&#10;turn right 90 degrees"
                             />
                             <div className="flex gap-1 mt-1">
@@ -216,7 +216,7 @@ Define square with size:
                               </button>
                               <button
                                 onClick={() => setEditingRoutine(null)}
-                                className="px-2 py-0.5 text-xs bg-gray-200 hover:bg-gray-300 rounded"
+                                className="px-2 py-0.5 text-xs bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 rounded dark:text-gray-200"
                               >
                                 Cancel
                               </button>
@@ -224,7 +224,7 @@ Define square with size:
                           </div>
                         ) : (
                           <div>
-                            <pre className="p-2 bg-gray-50 rounded text-xs font-mono whitespace-pre-wrap">
+                            <pre className="p-2 bg-gray-50 dark:bg-gray-700 rounded text-xs font-mono whitespace-pre-wrap dark:text-gray-300">
                               {routine.body || '(empty)'}
                             </pre>
                             <button
@@ -232,7 +232,7 @@ Define square with size:
                                 setEditingRoutine(routine.id);
                                 setEditValue(routine.body);
                               }}
-                              className="mt-1 px-2 py-0.5 text-xs bg-gray-200 hover:bg-gray-300 rounded"
+                              className="mt-1 px-2 py-0.5 text-xs bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 rounded dark:text-gray-200"
                             >
                               Edit
                             </button>
@@ -241,12 +241,12 @@ Define square with size:
                       </div>
 
                       {/* Usage hint */}
-                      <div className="mt-2 text-xs text-gray-500 bg-blue-50 p-2 rounded">
-                        <strong>Usage:</strong> Type <code className="bg-white px-1 rounded">{routine.name}</code>
+                      <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/30 p-2 rounded">
+                        <strong>Usage:</strong> Type <code className="bg-white dark:bg-gray-700 px-1 rounded">{routine.name}</code>
                         {routine.parameters.length > 0 && (
                           <> with {routine.parameters.map((p, i) => (
                             <span key={p}>
-                              <code className="bg-white px-1 rounded">{p}</code>
+                              <code className="bg-white dark:bg-gray-700 px-1 rounded">{p}</code>
                               {i < routine.parameters.length - 1 ? ', ' : ''}
                             </span>
                           ))}</>
