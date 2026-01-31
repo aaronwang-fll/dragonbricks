@@ -2,6 +2,18 @@ import { create } from 'zustand';
 import type { Program, ParsedCommand, Defaults } from '../types';
 import { DEFAULT_VALUES } from '../types';
 
+// Create initial default program
+const initialProgram: Program = {
+  id: 'program-initial',
+  name: 'Untitled 1',
+  setupSection: '',
+  mainSection: '',
+  routines: [],
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  profileId: null,
+};
+
 interface EditorState {
   // Current program
   currentProgram: Program | null;
@@ -44,8 +56,8 @@ interface EditorState {
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
-  currentProgram: null,
-  programs: [],
+  currentProgram: initialProgram,
+  programs: [initialProgram],
   commands: [],
   defaults: DEFAULT_VALUES,
   expandedCommands: new Set(),
