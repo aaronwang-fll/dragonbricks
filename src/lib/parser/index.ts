@@ -36,14 +36,15 @@ export function parseCommand(
   const motorResult = tryParseMotor(tokens, defaults, motorNames);
   if (motorResult) return motorResult;
 
-  const waitResult = tryParseWait(tokens);
-  if (waitResult) return waitResult;
+  // Turn and Move before Wait - they're more common and specific
+  const turnResult = tryParseTurn(tokens, defaults);
+  if (turnResult) return turnResult;
 
   const moveResult = tryParseMove(tokens, defaults);
   if (moveResult) return moveResult;
 
-  const turnResult = tryParseTurn(tokens, defaults);
-  if (turnResult) return turnResult;
+  const waitResult = tryParseWait(tokens);
+  if (waitResult) return waitResult;
 
   // No pattern matched
   return {

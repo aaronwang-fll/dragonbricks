@@ -96,7 +96,23 @@ export function extractRoutines(
   input: string,
   defaults: Defaults
 ): { routines: ParsedRoutine[]; mainCode: string[] } {
-  const lines = input.split('\n');
+  // Split on newlines, then also split each line on semicolons (for multiple commands per line)
+  const rawLines = input.split('\n');
+  const lines: string[] = [];
+  for (const rawLine of rawLines) {
+    // Don't split routine definitions on semicolons
+    if (rawLine.trim().toLowerCase().startsWith('define ')) {
+      lines.push(rawLine);
+    } else {
+      // Split on semicolons for regular commands
+      const parts = rawLine.split(';').map(p => p.trim()).filter(Boolean);
+      if (parts.length > 0) {
+        lines.push(...parts);
+      } else if (rawLine.trim() === '') {
+        lines.push(''); // preserve empty lines
+      }
+    }
+  }
   const routines: ParsedRoutine[] = [];
   const mainCode: string[] = [];
 

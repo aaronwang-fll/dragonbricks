@@ -11,6 +11,9 @@ export interface Token {
 // Common filler words to ignore
 const FILLER_WORDS = ['for', 'to', 'the', 'a', 'an', 'of', 'by', 'at', 'in', 'on', 'and', 'then'];
 
+// Words that should NOT be fuzzy matched to verbs (they have other meanings)
+const VERB_BLACKLIST = ['speed', 'slow', 'fast', 'quick', 'rate'];
+
 const ALL_VERBS = [
   ...patterns.MOVE_VERBS,
   ...patterns.TURN_VERBS,
@@ -93,7 +96,7 @@ function classifyWord(word: string): Token {
 
   // Try fuzzy matching with stricter tolerance
   // Only fuzzy match if the word is at least 4 characters and the match is close
-  if (word.length >= 4) {
+  if (word.length >= 4 && !VERB_BLACKLIST.includes(word)) {
     const verbMatch = findBestMatch(word, ALL_VERBS, 2);
     if (verbMatch) {
       return { type: 'verb', value: word, normalized: verbMatch.match };
