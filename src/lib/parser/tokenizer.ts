@@ -2,7 +2,7 @@ import { findBestMatch } from './fuzzyMatch';
 import * as patterns from './patterns';
 
 export interface Token {
-  type: 'verb' | 'direction' | 'number' | 'unit' | 'color' | 'motor' | 'word' | 'unknown';
+  type: 'verb' | 'direction' | 'number' | 'unit' | 'color' | 'motor' | 'speed' | 'word' | 'unknown';
   value: string;
   normalized?: string;
   numericValue?: number;
@@ -92,6 +92,10 @@ function classifyWord(word: string): Token {
 
   if (patterns.MOTOR_WORDS.includes(word)) {
     return { type: 'motor', value: word, normalized: word };
+  }
+
+  if (patterns.SPEED_WORDS.includes(word)) {
+    return { type: 'speed', value: word, normalized: 'speed' };
   }
 
   // Try fuzzy matching with stricter tolerance

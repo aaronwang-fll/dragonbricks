@@ -43,3 +43,7 @@ export const TIME_CONVERSIONS: Record<string, number> = {
 export const ANGLE_UNITS = ['degree', 'degrees', 'deg', '°'];
 
 export const COLORS = ['red', 'green', 'blue', 'yellow', 'white', 'black', 'orange', 'purple'];
+
+// Speed-related words
+export const SPEED_WORDS = ['speed', 'velocity', 'rate', 'fast', 'slow', 'quickly', 'slowly'];
+export const SPEED_PREPOSITIONS = ['at', 'with', 'using'];
