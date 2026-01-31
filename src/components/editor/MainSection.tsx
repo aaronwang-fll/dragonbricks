@@ -16,7 +16,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
   const { parseInput } = useParser();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Parse input with debounce
+  // Parse input with debounce - don't auto-popup clarification while typing
   useEffect(() => {
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
@@ -24,22 +24,25 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
 
     debounceRef.current = setTimeout(() => {
       if (input.trim()) {
-        const parsedCommands = parseInput(input);
-
-        // Check for clarifications needed
-        const needsClarification = parsedCommands.find(cmd => cmd.status === 'needs-clarification');
-        if (needsClarification && needsClarification.clarification && onClarificationNeeded) {
-          onClarificationNeeded(needsClarification.id, needsClarification.clarification);
-        }
+        // Just parse for status indicators, don't trigger clarification popups
+        parseInput(input);
       }
-    }, 300);
+    }, 800); // Longer debounce to let user finish typing
 
     return () => {
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
       }
     };
-  }, [input, parseInput, onClarificationNeeded]);
+  }, [input, parseInput]);
+
+  // Only show clarification dialog when user clicks on a line that needs it
+  const handleLineClick = useCallback((lineIndex: number) => {
+    const cmd = commands[lineIndex];
+    if (cmd?.status === 'needs-clarification' && cmd.clarification && onClarificationNeeded) {
+      onClarificationNeeded(cmd.id, cmd.clarification);
+    }
+  }, [commands, onClarificationNeeded]);
 
   const getStatusIcon = useCallback((status: string) => {
     switch (status) {
@@ -68,14 +71,23 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
   return (
     <div className="flex-1 flex flex-col bg-white overflow-hidden">
       <div className="flex-1 flex overflow-hidden">
-        {/* Line status indicators */}
+        {/* Line status indicators - clickable for clarification */}
         <div className="w-8 bg-gray-50 border-r border-gray-200 flex-shrink-0 overflow-hidden">
           <div className="pt-3 px-1">
-            {lines.map((_, i) => (
-              <div key={i} className="h-5 flex items-center justify-center">
-                {input.trim() && lines[i]?.trim() && getStatusIcon(getLineStatus(i))}
-              </div>
-            ))}
+            {lines.map((_, i) => {
+              const status = getLineStatus(i);
+              const isClickable = status === 'needs-clarification';
+              return (
+                <div
+                  key={i}
+                  className={`h-5 flex items-center justify-center ${isClickable ? 'cursor-pointer hover:bg-yellow-100 rounded' : ''}`}
+                  onClick={() => isClickable && handleLineClick(i)}
+                  title={isClickable ? 'Click to provide missing value' : undefined}
+                >
+                  {input.trim() && lines[i]?.trim() && getStatusIcon(status)}
+                </div>
+              );
+            })}
           </div>
         </div>
 
