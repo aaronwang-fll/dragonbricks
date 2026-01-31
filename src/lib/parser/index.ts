@@ -33,6 +33,10 @@ export function parseCommand(
   const stopResult = tryParseStop(tokens, motorNames);
   if (stopResult) return stopResult;
 
+  // Set speed should be checked early - "set speed to 100"
+  const setSpeedResult = tryParseSetSpeed(tokens);
+  if (setSpeedResult) return setSpeedResult;
+
   const motorResult = tryParseMotor(tokens, defaults, motorNames);
   if (motorResult) return motorResult;
 
@@ -326,6 +330,72 @@ function tryParseStop(tokens: Token[], _motorNames: string[]): ParseResult | nul
     success: true,
     pythonCode: `robot.stop()`,
     confidence: 0.85,
+  };
+}
+
+function tryParseSetSpeed(tokens: Token[]): ParseResult | null {
+  // Look for "set speed to X" or "speed X" or "change speed to X"
+  const hasSetVerb = tokens.some(
+    (t) => t.type === 'verb' && patterns.SET_VERBS.includes(t.normalized || t.value)
+  );
+  const hasSpeedWord = tokens.some((t) => t.type === 'speed');
+
+  // Must have speed word
+  if (!hasSpeedWord) return null;
+
+  // Check if this is a standalone speed command vs "move forward at speed 100"
+  // If there's a move verb, this isn't a set speed command
+  const hasMoveVerb = tokens.some(
+    (t) => t.type === 'verb' && patterns.MOVE_VERBS.includes(t.normalized || t.value)
+  );
+
+  if (hasMoveVerb) return null;
+
+  // Check if "turn" is part of "set turn speed" vs a standalone "turn left 90" command
+  // If there's a turn verb but also a set verb + speed word, it's a set speed command
+  const hasTurnVerb = tokens.some(
+    (t) => t.type === 'verb' && patterns.TURN_VERBS.includes(t.normalized || t.value)
+  );
+  const hasDirection = tokens.some((t) => t.type === 'direction');
+
+  // If there's turn verb + direction (like "turn left 90"), it's a turn command, not set speed
+  if (hasTurnVerb && hasDirection && !hasSetVerb) return null;
+
+  // Find the number value
+  const number = tokens.find((t) => t.type === 'number');
+
+  if (!number) {
+    return {
+      success: false,
+      needsClarification: {
+        field: 'speed',
+        message: 'What speed should be set? (mm/s)',
+        type: 'distance', // Using distance type since speed is in mm/s
+      },
+      confidence: 0.7,
+    };
+  }
+
+  const speedValue = number.numericValue || 100;
+
+  // Check if this is for turn rate or straight speed
+  // Look for "turn" or "turning" or "rotation" in the tokens
+  const hasTurnWord = tokens.some(
+    (t) => t.value === 'turn' || t.value === 'turning' || t.value === 'rotation'
+  );
+
+  if (hasTurnWord) {
+    return {
+      success: true,
+      pythonCode: `robot.settings(turn_rate=${speedValue})`,
+      confidence: 0.9,
+    };
+  }
+
+  return {
+    success: true,
+    pythonCode: `robot.settings(straight_speed=${speedValue})`,
+    confidence: 0.9,
   };
 }
 

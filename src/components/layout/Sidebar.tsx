@@ -78,9 +78,9 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-48 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
+    <aside className="w-48 bg-gray-800 border-r border-gray-700 flex flex-col">
       {/* New button at top */}
-      <div className="p-2 border-b border-gray-200 dark:border-gray-700">
+      <div className="p-2 border-b border-gray-700">
         <button
           onClick={handleNewFile}
           className="w-full px-3 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded flex items-center justify-center gap-2"
@@ -90,8 +90,8 @@ export function Sidebar() {
       </div>
 
       {/* Files header */}
-      <div className="px-3 py-2 bg-gray-50 dark:bg-gray-900">
-        <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Programs ({programs.length})</span>
+      <div className="px-3 py-2 bg-gray-900">
+        <span className="text-xs font-semibold text-gray-400 uppercase">Programs ({programs.length})</span>
       </div>
 
       {/* File list */}
@@ -106,7 +106,7 @@ export function Sidebar() {
               key={program.id}
               onContextMenu={(e) => handleContextMenu(e, program.id)}
               className={`group relative ${
-                currentProgram?.id === program.id ? 'bg-blue-50 dark:bg-blue-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                currentProgram?.id === program.id ? 'bg-blue-900/30' : 'hover:bg-gray-700'
               }`}
             >
               {editingId === program.id ? (
@@ -119,19 +119,49 @@ export function Sidebar() {
                     if (e.key === 'Enter') handleSaveRename();
                     if (e.key === 'Escape') setEditingId(null);
                   }}
-                  className="w-full px-3 py-2 text-sm border-0 bg-white dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border-0 bg-gray-700 text-white focus:ring-2 focus:ring-blue-500"
                   autoFocus
                 />
               ) : (
-                <button
-                  onClick={() => setCurrentProgram(program)}
-                  className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${
-                    currentProgram?.id === program.id ? 'text-blue-700 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'
-                  }`}
-                >
-                  <span>📄</span>
-                  <span className="truncate flex-1">{program.name}</span>
-                </button>
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setCurrentProgram(program)}
+                    className={`flex-1 px-3 py-2 text-left text-sm truncate ${
+                      currentProgram?.id === program.id ? 'text-blue-400' : 'text-gray-300'
+                    }`}
+                  >
+                    {program.name}
+                  </button>
+                  <div className="hidden group-hover:flex items-center gap-0.5 pr-1">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleRename(program.id); }}
+                      className="p-1 hover:bg-gray-600 rounded"
+                      title="Rename"
+                    >
+                      <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleExport(program.id); }}
+                      className="p-1 hover:bg-gray-600 rounded"
+                      title="Export"
+                    >
+                      <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDelete(program.id); }}
+                      className="p-1 hover:bg-red-900/30 rounded"
+                      title="Delete"
+                    >
+                      <svg className="w-3 h-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           ))
@@ -141,14 +171,14 @@ export function Sidebar() {
       {/* New file dialog */}
       {showNewDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 w-80 shadow-xl">
-            <h3 className="text-lg font-semibold mb-3 dark:text-white">New Program</h3>
+          <div className="bg-gray-800 rounded-lg p-4 w-80 shadow-xl">
+            <h3 className="text-lg font-semibold mb-3 text-white">New Program</h3>
             <input
               type="text"
               value={newFileName}
               onChange={(e) => setNewFileName(e.target.value)}
               placeholder="Program name"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded mb-3 bg-white dark:bg-gray-700 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-600 rounded mb-3 bg-gray-700 text-white"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleCreateFile();
@@ -158,7 +188,7 @@ export function Sidebar() {
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setShowNewDialog(false)}
-                className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                className="px-3 py-1.5 text-sm text-gray-300 hover:bg-gray-700 rounded"
               >
                 Cancel
               </button>
@@ -181,27 +211,36 @@ export function Sidebar() {
             onClick={() => setContextMenu(null)}
           />
           <div
-            className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 min-w-32"
+            className="fixed z-50 bg-gray-800 rounded-lg shadow-xl border border-gray-700 py-1 min-w-32"
             style={{ left: contextMenu.x, top: contextMenu.y }}
           >
             <button
               onClick={() => handleRename(contextMenu.id)}
-              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300 flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-700 text-gray-300 flex items-center gap-2"
             >
-              ✏️ Rename
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+              Rename
             </button>
             <button
               onClick={() => handleExport(contextMenu.id)}
-              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300 flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-700 text-gray-300 flex items-center gap-2"
             >
-              📤 Export
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              Export
             </button>
-            <hr className="my-1 dark:border-gray-700" />
+            <hr className="my-1 border-gray-700" />
             <button
               onClick={() => handleDelete(contextMenu.id)}
-              className="w-full px-3 py-2 text-left text-sm hover:bg-red-50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm hover:bg-red-900/30 text-red-400 flex items-center gap-2"
             >
-              🗑️ Delete
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Delete
             </button>
           </div>
         </>

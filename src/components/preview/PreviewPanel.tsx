@@ -236,30 +236,30 @@ export function PreviewPanel() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="w-8 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 border-l border-gray-200 dark:border-gray-700 flex items-center justify-center"
+        className="w-8 bg-gray-800 hover:bg-gray-700 border-l border-gray-700 flex items-center justify-center"
         title="Open Preview"
       >
-        <span className="text-gray-500 dark:text-gray-400 text-xs">◀</span>
+        <span className="text-gray-400 text-xs">◀</span>
       </button>
     );
   }
 
   return (
-    <aside style={{ width: panelWidth }} className="bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">
+    <aside style={{ width: panelWidth }} className="bg-gray-800 border-l border-gray-700 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-2 py-1.5 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-        <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Preview</span>
+      <div className="flex items-center justify-between px-2 py-1.5 bg-gray-900 border-b border-gray-700">
+        <span className="text-xs font-semibold text-gray-300 uppercase">Preview</span>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+            className="w-6 h-6 flex items-center justify-center hover:bg-gray-700 rounded text-gray-400 hover:text-gray-200"
             title={isExpanded ? 'Collapse' : 'Expand'}
           >
             {isExpanded ? '▶' : '◀'}
           </button>
           <button
             onClick={() => setIsOpen(false)}
-            className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            className="w-6 h-6 flex items-center justify-center hover:bg-gray-700 rounded text-gray-400 hover:text-gray-200"
             title="Close"
           >
             ×
@@ -277,7 +277,7 @@ export function PreviewPanel() {
           ref={canvasRef}
           width={panelWidth - 16}
           height={canvasHeight}
-          className="w-full bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700"
+          className="w-full bg-gray-900 rounded border border-gray-700"
         />
       </div>
 
@@ -286,7 +286,7 @@ export function PreviewPanel() {
         {/* Timeline */}
         {calculatedPath && calculatedPath.totalTime > 0 && (
           <div>
-            <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400 mb-0.5">
+            <div className="flex items-center justify-between text-[10px] text-gray-400 mb-0.5">
               <span>{formatTime(currentTime)}</span>
               <span>{formatTime(calculatedPath.totalTime)}</span>
             </div>
@@ -297,7 +297,7 @@ export function PreviewPanel() {
               value={currentTime}
               onChange={(e) => setCurrentTime(Number(e.target.value))}
               onClick={(e) => e.stopPropagation()}
-              className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
+              className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer"
             />
           </div>
         )}
@@ -307,14 +307,14 @@ export function PreviewPanel() {
           <button
             onClick={(e) => { e.stopPropagation(); setIsPlaying(!isPlaying); }}
             disabled={!calculatedPath || calculatedPath.totalTime === 0}
-            className="w-7 h-7 flex items-center justify-center bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white text-sm rounded"
+            className="w-7 h-7 flex items-center justify-center bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 text-white text-sm rounded"
             title={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? '⏸' : '▶'}
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); handleReset(); }}
-            className="w-7 h-7 flex items-center justify-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-sm rounded dark:text-gray-200"
+            className="w-7 h-7 flex items-center justify-center bg-gray-700 hover:bg-gray-600 text-sm rounded text-gray-200"
             title="Reset"
           >
             ⟲
@@ -323,7 +323,7 @@ export function PreviewPanel() {
             value={playbackSpeed}
             onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
             onClick={(e) => e.stopPropagation()}
-            className="px-1 py-1 border border-gray-300 dark:border-gray-600 rounded text-[10px] bg-white dark:bg-gray-700 dark:text-white"
+            className="px-1 py-1 border border-gray-600 rounded text-[10px] bg-gray-700 text-white"
           >
             <option value={0.5}>0.5x</option>
             <option value={1}>1x</option>
@@ -333,7 +333,7 @@ export function PreviewPanel() {
           <div className="flex-1" />
           <button
             onClick={(e) => { e.stopPropagation(); handleLoadImage(); }}
-            className="px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-[10px] rounded dark:text-gray-200"
+            className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-[10px] rounded text-gray-200"
           >
             {fieldImage ? 'Change Map' : 'Load Map'}
           </button>
@@ -349,7 +349,7 @@ export function PreviewPanel() {
       </div>
 
       {/* Legend - compact */}
-      <div className="px-2 py-1.5 border-t border-gray-200 dark:border-gray-700 text-[10px] text-gray-500 dark:text-gray-400 flex items-center justify-between">
+      <div className="px-2 py-1.5 border-t border-gray-700 text-[10px] text-gray-400 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="flex items-center gap-0.5">
             <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Start
@@ -361,7 +361,7 @@ export function PreviewPanel() {
             <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span> End
           </span>
         </div>
-        <span className="text-yellow-600 dark:text-yellow-500">Path only</span>
+        <span className="text-yellow-500">Path only</span>
       </div>
     </aside>
   );

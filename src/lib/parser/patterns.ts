@@ -7,6 +7,7 @@ export const RIGHT_WORDS = ['right'];
 export const WAIT_VERBS = ['wait', 'pause', 'delay', 'sleep'];
 export const RUN_VERBS = ['run', 'spin', 'rotate', 'move'];
 export const STOP_VERBS = ['stop', 'halt', 'brake'];
+export const SET_VERBS = ['set', 'change', 'configure', 'adjust', 'use'];
 export const MOTOR_WORDS = ['motor', 'arm', 'claw', 'gripper', 'lift'];
 
 export const UNIT_CONVERSIONS: Record<string, number> = {

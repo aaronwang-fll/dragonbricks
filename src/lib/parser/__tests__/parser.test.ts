@@ -178,6 +178,38 @@ describe('parseCommand', () => {
     });
   });
 
+  describe('set speed commands', () => {
+    it('parses "set speed to 100"', () => {
+      const result = parseCommand('set speed to 100');
+      expect(result.success).toBe(true);
+      expect(result.pythonCode).toBe('robot.settings(straight_speed=100)');
+    });
+
+    it('parses "speed 200"', () => {
+      const result = parseCommand('speed 200');
+      expect(result.success).toBe(true);
+      expect(result.pythonCode).toBe('robot.settings(straight_speed=200)');
+    });
+
+    it('parses "change speed to 150"', () => {
+      const result = parseCommand('change speed to 150');
+      expect(result.success).toBe(true);
+      expect(result.pythonCode).toBe('robot.settings(straight_speed=150)');
+    });
+
+    it('parses "set turn speed to 90"', () => {
+      const result = parseCommand('set turn speed to 90');
+      expect(result.success).toBe(true);
+      expect(result.pythonCode).toBe('robot.settings(turn_rate=90)');
+    });
+
+    it('asks for clarification when speed value missing', () => {
+      const result = parseCommand('set speed');
+      expect(result.success).toBe(false);
+      expect(result.needsClarification).toBeDefined();
+    });
+  });
+
   describe('edge cases', () => {
     it('handles empty input', () => {
       const result = parseCommand('');

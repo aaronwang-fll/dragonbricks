@@ -6,7 +6,7 @@ import { PreviewPanel } from './components/preview/PreviewPanel';
 
 function App() {
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="h-screen flex flex-col bg-gray-900">
       <Header />
       <div className="flex-1 flex overflow-hidden">
         <Sidebar />

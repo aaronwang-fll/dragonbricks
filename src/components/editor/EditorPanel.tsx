@@ -6,7 +6,6 @@ import { SetupSection } from './SetupSection';
 import { MainSection } from './MainSection';
 import { RoutinesSection } from './RoutinesSection';
 import { ClarificationDialog } from './ClarificationDialog';
-import { PythonPanel } from './PythonPanel';
 
 
 interface ClarificationState {
@@ -18,8 +17,7 @@ interface ClarificationState {
 }
 
 export function EditorPanel() {
-  const { routinesHeight, setRoutinesHeight, showPythonPanel, setShowPythonPanel, pythonPanelWidth, setPythonPanelWidth } =
-    useEditorStore();
+  const { routinesHeight, setRoutinesHeight } = useEditorStore();
   const { resolveClarification } = useParser();
 
   const [clarification, setClarification] = useState<ClarificationState>({
@@ -32,10 +30,6 @@ export function EditorPanel() {
 
   const handleRoutinesResize = (delta: number) => {
     setRoutinesHeight(Math.max(50, Math.min(400, routinesHeight - delta)));
-  };
-
-  const handlePythonPanelResize = (delta: number) => {
-    setPythonPanelWidth(Math.max(200, Math.min(600, pythonPanelWidth - delta)));
   };
 
   const handleClarificationNeeded = useCallback((
@@ -63,49 +57,29 @@ export function EditorPanel() {
   }, []);
 
   return (
-    <div className="flex-1 flex border-r border-gray-200 dark:border-gray-700">
-      {/* Left side: Setup + Main + Routines */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Setup Section - collapsible header */}
-        <details open className="group">
-          <summary className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase px-3 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 list-none flex items-center gap-2">
-            <span className="text-[10px] group-open:rotate-90 transition-transform">▶</span>
-            Setup
-          </summary>
-          <div className="max-h-48 overflow-y-auto">
-            <SetupSection />
-          </div>
-        </details>
-
-        {/* Main Section - no resize handle, just border */}
-        <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase px-3 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <span>Main</span>
-          <button
-            onClick={() => setShowPythonPanel(!showPythonPanel)}
-            className={`text-[10px] px-2 py-0.5 rounded ${showPythonPanel ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'} hover:opacity-80`}
-            title={showPythonPanel ? 'Hide Python' : 'Show Python'}
-          >
-            {showPythonPanel ? '< Python' : 'Python >'}
-          </button>
+    <div className="flex-1 flex flex-col border-r border-gray-700">
+      {/* Setup Section - collapsible header */}
+      <details open className="group">
+        <summary className="text-xs font-semibold text-gray-400 uppercase px-3 py-2 bg-gray-800 border-b border-gray-700 cursor-pointer hover:bg-gray-700 list-none flex items-center gap-2">
+          <span className="text-[10px] group-open:rotate-90 transition-transform">▶</span>
+          Setup
+        </summary>
+        <div className="max-h-48 overflow-y-auto">
+          <SetupSection />
         </div>
-        <MainSection onClarificationNeeded={handleClarificationNeeded} />
+      </details>
 
-        <ResizeHandle direction="vertical" onResize={handleRoutinesResize} />
-
-        <div style={{ height: routinesHeight, minHeight: 50 }}>
-          <RoutinesSection />
-        </div>
+      {/* Main Section - inline Python per line */}
+      <div className="text-xs font-semibold text-gray-400 uppercase px-3 py-2 bg-gray-800 border-b border-gray-700">
+        Main
       </div>
+      <MainSection onClarificationNeeded={handleClarificationNeeded} />
 
-      {/* Right side: Python Panel */}
-      {showPythonPanel && (
-        <>
-          <ResizeHandle direction="horizontal" onResize={handlePythonPanelResize} />
-          <div style={{ width: pythonPanelWidth }} className="flex flex-col border-l border-gray-200 dark:border-gray-700">
-            <PythonPanel />
-          </div>
-        </>
-      )}
+      <ResizeHandle direction="vertical" onResize={handleRoutinesResize} />
+
+      <div style={{ height: routinesHeight, minHeight: 50 }}>
+        <RoutinesSection />
+      </div>
 
       <ClarificationDialog
         isOpen={clarification.isOpen}

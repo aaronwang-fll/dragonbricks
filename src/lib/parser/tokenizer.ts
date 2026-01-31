@@ -20,6 +20,7 @@ const ALL_VERBS = [
   ...patterns.WAIT_VERBS,
   ...patterns.RUN_VERBS,
   ...patterns.STOP_VERBS,
+  ...patterns.SET_VERBS,
 ];
 
 const ALL_DIRECTIONS = [
