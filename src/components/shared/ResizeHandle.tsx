@@ -46,14 +46,14 @@ export function ResizeHandle({ onResize, direction }: ResizeHandleProps) {
       onMouseDown={handleMouseDown}
       className={`
         ${direction === 'vertical' ? 'h-2 cursor-row-resize' : 'w-2 cursor-col-resize'}
-        bg-gray-200 hover:bg-blue-300 transition-colors
+        bg-gray-700 hover:bg-gray-600 transition-colors
         flex items-center justify-center
-        ${isDragging ? 'bg-blue-400' : ''}
+        ${isDragging ? 'bg-blue-500' : ''}
       `}
     >
       <div className={`
         ${direction === 'vertical' ? 'w-8 h-0.5' : 'h-8 w-0.5'}
-        bg-gray-400
+        bg-gray-500
       `} />
     </div>
   );
