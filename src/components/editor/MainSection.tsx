@@ -280,7 +280,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                   {line.trim() && getStatusIcon(status)}
                 </div>
 
-                {/* Natural language input - fixed width, shrinks only if Python needs space */}
+                {/* Natural language input - auto-size to content when expanded */}
                 <input
                   ref={el => inputRefs.current[index] = el}
                   type="text"
@@ -288,7 +288,8 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                   onChange={(e) => handleLineChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   placeholder={index === 0 && !line ? 'Type a command... (e.g., move forward 200mm)' : ''}
-                  className={`bg-transparent text-sm font-mono text-white placeholder-gray-600 py-2 px-2 outline-none border-0 ${isExpanded ? 'w-56 flex-shrink' : 'flex-1'}`}
+                  style={isExpanded && line ? { width: `${line.length + 1}ch` } : undefined}
+                  className={`bg-transparent text-sm font-mono text-white placeholder-gray-600 py-2 px-2 outline-none border-0 ${isExpanded ? 'flex-shrink-0' : 'flex-1'}`}
                   spellCheck={false}
                 />
 
