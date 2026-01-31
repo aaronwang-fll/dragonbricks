@@ -288,11 +288,11 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                   onChange={(e) => handleLineChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   placeholder={index === 0 && !line ? 'Type a command... (e.g., move forward 200mm)' : ''}
-                  className={`bg-transparent text-sm font-mono text-white placeholder-gray-600 py-2 px-2 outline-none border-0 ${isExpanded ? 'w-auto flex-shrink-0' : 'flex-1 min-w-0'}`}
+                  className="flex-1 bg-transparent text-sm font-mono text-white placeholder-gray-600 py-2 px-2 outline-none border-0 min-w-0"
                   spellCheck={false}
                 />
 
-                {/* Expand arrow - right after English text, only show if there's code and not expanded */}
+                {/* Expand arrow - right after English text */}
                 {hasCode && !isExpanded && (
                   <button
                     onClick={() => toggleLine(index)}
@@ -303,28 +303,28 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                   </button>
                 )}
                 {!hasCode && line.trim() && <div className="w-8 flex-shrink-0" />}
-
-                {/* Inline Python code (shown when expanded) */}
-                {hasCode && isExpanded && (
-                  <>
-                    <div className="flex-1 text-xs font-mono text-gray-300 truncate px-2 py-2 bg-gray-800/50 min-w-0">
-                      {pythonCode.split('\n').map((codeLine, i) => (
-                        <span key={i} className={codeLine.startsWith('#') ? 'text-gray-500' : 'text-gray-300'}>
-                          {codeLine}{i < pythonCode.split('\n').length - 1 ? ' | ' : ''}
-                        </span>
-                      ))}
-                    </div>
-                    {/* Collapse arrow at end of Python */}
-                    <button
-                      onClick={() => toggleLine(index)}
-                      className="px-2 h-8 flex items-center justify-center text-gray-500 hover:text-white hover:bg-gray-700 transition-colors flex-shrink-0"
-                      title="Hide Python"
-                    >
-                      <span className="text-xs">◀</span>
-                    </button>
-                  </>
-                )}
               </div>
+
+              {/* Python code on separate line (shown when expanded) */}
+              {hasCode && isExpanded && (
+                <div className="flex items-center bg-gray-800/50 ml-8 mr-2 mb-1 rounded">
+                  <div className="flex-1 text-xs font-mono text-gray-300 px-2 py-1.5 overflow-x-auto">
+                    {pythonCode.split('\n').map((codeLine, i) => (
+                      <span key={i} className={codeLine.startsWith('#') ? 'text-gray-500' : 'text-gray-300'}>
+                        {codeLine}{i < pythonCode.split('\n').length - 1 ? ' | ' : ''}
+                      </span>
+                    ))}
+                  </div>
+                  {/* Collapse arrow at end of Python */}
+                  <button
+                    onClick={() => toggleLine(index)}
+                    className="px-2 h-6 flex items-center justify-center text-gray-500 hover:text-white hover:bg-gray-700 transition-colors flex-shrink-0 rounded"
+                    title="Hide Python"
+                  >
+                    <span className="text-xs">◀</span>
+                  </button>
+                </div>
+              )}
             </div>
           );
         })}

@@ -236,10 +236,12 @@ export function PreviewPanel() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="w-8 bg-gray-800 hover:bg-gray-700 border-l border-gray-700 flex items-center justify-center"
-        title="Open Preview"
+        className="w-8 bg-gray-800 hover:bg-gray-700 border-l border-gray-700 flex items-center justify-center group relative"
       >
         <span className="text-gray-400 text-xs">◀</span>
+        <span className="absolute right-10 px-2 py-1 bg-gray-600 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+          Open Preview
+        </span>
       </button>
     );
   }

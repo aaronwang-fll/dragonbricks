@@ -5,11 +5,27 @@ import { useThemeStore } from '../../stores/themeStore';
 
 export function Header() {
   const { status, programStatus } = useConnectionStore();
-  const { run, stop } = useBluetooth();
+  const { isSupported, connect, disconnect, run, stop } = useBluetooth();
   const { mode, setMode } = useThemeStore();
   const [showSettings, setShowSettings] = useState(false);
 
   const isConnected = status === 'connected';
+  const isConnecting = status === 'connecting';
+
+  const handleConnect = async () => {
+    if (isConnected) {
+      await disconnect();
+    } else {
+      await connect();
+    }
+  };
+
+  const statusConfig = {
+    disconnected: { dot: 'bg-gray-400' },
+    connecting: { dot: 'bg-yellow-500 animate-pulse' },
+    connected: { dot: 'bg-green-500' },
+    error: { dot: 'bg-red-500' },
+  };
 
   const cycleTheme = () => {
     const modes: Array<'light' | 'dark' | 'system'> = ['light', 'dark', 'system'];
@@ -79,6 +95,22 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-2">
+        {/* Connect Hub button */}
+        <button
+          onClick={handleConnect}
+          disabled={!isSupported || isConnecting}
+          className="h-10 px-3 flex items-center gap-2 hover:bg-gray-700 disabled:opacity-50 rounded-lg transition-colors group relative"
+          aria-label="Connect Hub"
+        >
+          <svg className="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M17.71 7.71L12 2h-1v7.59L6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 11 14.41V22h1l5.71-5.71-4.3-4.29 4.3-4.29zM13 5.83l1.88 1.88L13 9.59V5.83zm1.88 10.46L13 18.17v-3.76l1.88 1.88z"/>
+          </svg>
+          <span className={`w-2 h-2 rounded-full ${statusConfig[status].dot}`} />
+          <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-600 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+            {isConnecting ? 'Connecting...' : isConnected ? 'Disconnect' : 'Connect Hub'}
+          </span>
+        </button>
+
         <button
           onClick={cycleTheme}
           className="w-10 h-10 flex items-center justify-center hover:bg-gray-700 rounded-lg transition-colors group relative"

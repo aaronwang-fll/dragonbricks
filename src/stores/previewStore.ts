@@ -31,8 +31,8 @@ interface PreviewState {
 }
 
 export const usePreviewStore = create<PreviewState>((set) => ({
-  isOpen: true,
-  isExpanded: true,
+  isOpen: false,
+  isExpanded: false,
   width: 300,
   fieldImage: null,
   robotPath: [],
