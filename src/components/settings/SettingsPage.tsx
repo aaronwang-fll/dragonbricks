@@ -27,17 +27,17 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
   return (
     <div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-900">
       {/* Header */}
-      <header className="h-14 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center px-4 gap-4">
+      <header className="h-14 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4">
+        <h1 className="text-xl font-bold text-gray-800 dark:text-white">Settings</h1>
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+          className="w-8 h-8 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+          aria-label="Close settings"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
-          Back
         </button>
-        <h1 className="text-xl font-bold text-gray-800 dark:text-white">Settings</h1>
       </header>
 
       {/* Content */}
@@ -178,7 +178,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 mb-2">Default Speed (mm/s)</label>
+                <label className="block text-gray-700 dark:text-gray-300 mb-2">Default Speed (millimeters/s)</label>
                 <input
                   type="number"
                   value={defaults.speed}
@@ -187,7 +187,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 />
               </div>
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 mb-2">Default Turn Rate (deg/s)</label>
+                <label className="block text-gray-700 dark:text-gray-300 mb-2">Default Turn Rate (°/s)</label>
                 <input
                   type="number"
                   value={defaults.turnRate}
@@ -196,7 +196,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 />
               </div>
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 mb-2">Wheel Diameter (mm)</label>
+                <label className="block text-gray-700 dark:text-gray-300 mb-2">Wheel Diameter (millimeters)</label>
                 <input
                   type="number"
                   value={defaults.wheelDiameter}
@@ -205,7 +205,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 />
               </div>
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 mb-2">Axle Track (mm)</label>
+                <label className="block text-gray-700 dark:text-gray-300 mb-2">Axle Track (millimeters)</label>
                 <input
                   type="number"
                   value={defaults.axleTrack}
@@ -218,7 +218,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
 
           {/* More settings coming soon */}
           <section className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-6 border border-dashed border-gray-300 dark:border-gray-700">
-            <p className="text-gray-500 text-center">More configuration options coming soon...</p>
+            <p className="text-gray-500 text-center">more options coming soon</p>
           </section>
 
         </div>
