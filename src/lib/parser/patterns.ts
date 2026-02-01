@@ -15,7 +15,7 @@ export const MOTOR_WORDS = ['motor', 'arm', 'claw', 'gripper', 'lift', 'attachme
 export const REPEAT_VERBS = ['repeat', 'loop', 'do'];
 export const TIMES_WORDS = ['times', 'iterations', 'loops'];
 export const DEFINE_VERBS = ['define', 'create', 'make', 'build'];
-export const MISSION_WORDS = ['mission', 'run', 'routine', 'program', 'task'];
+export const MISSION_WORDS = ['mission', 'routine', 'program', 'task'];
 export const CALL_VERBS = ['call', 'execute', 'start', 'begin', 'launch'];
 
 // Sensor patterns

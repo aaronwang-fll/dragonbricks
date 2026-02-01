@@ -28,9 +28,13 @@ const applyTheme = (mode: ThemeMode) => {
 // Get initial mode from localStorage or default to 'system'
 const getInitialMode = (): ThemeMode => {
   if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('theme-mode');
-    if (stored === 'light' || stored === 'dark' || stored === 'system') {
-      return stored;
+    try {
+      const stored = localStorage.getItem('theme-mode');
+      if (stored === 'light' || stored === 'dark' || stored === 'system') {
+        return stored;
+      }
+    } catch {
+      // localStorage not available (SSR or test environment)
     }
   }
   return 'system';
