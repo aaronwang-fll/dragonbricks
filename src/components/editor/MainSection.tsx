@@ -293,7 +293,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                   onChange={(e) => handleLineChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   placeholder={index === 0 && !line ? 'Type command...' : ''}
-                  className="flex-1 bg-transparent text-sm font-mono text-white placeholder-gray-600 py-2 pl-2 pr-0 outline-none border-0 min-w-[100px]"
+                  className="flex-1 bg-transparent text-sm font-mono text-white placeholder-gray-600 py-2 pl-6 pr-0 outline-none border-0 min-w-[100px]"
                   spellCheck={false}
                 />
 
