@@ -269,8 +269,8 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
 
           return (
             <div key={index} className="border-b border-gray-800">
-              {/* Main row */}
-              <div className="flex items-center">
+              {/* Main row - flex wrap for long content */}
+              <div className="flex flex-wrap items-center">
                 {/* Status icon */}
                 <div
                   className={`w-8 flex items-center justify-center flex-shrink-0 ${isClickable ? 'cursor-pointer hover:bg-yellow-900/30' : ''}`}
@@ -280,7 +280,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                   {line.trim() && getStatusIcon(status)}
                 </div>
 
-                {/* Natural language input - auto-size to content when expanded */}
+                {/* Natural language input */}
                 <input
                   ref={el => inputRefs.current[index] = el}
                   type="text"
@@ -288,8 +288,8 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                   onChange={(e) => handleLineChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   placeholder={index === 0 && !line ? 'Type a command... (e.g., move forward 200mm)' : ''}
-                  style={isExpanded && line ? { width: `${line.length + 1}ch` } : undefined}
-                  className={`bg-transparent text-sm font-mono text-white placeholder-gray-600 py-2 pl-2 pr-0 outline-none border-0 ${isExpanded ? 'flex-shrink-0' : 'flex-1'}`}
+                  style={{ width: line ? `${Math.min(line.length + 1, 50)}ch` : '300px' }}
+                  className="bg-transparent text-sm font-mono text-white placeholder-gray-600 py-2 pl-2 pr-0 outline-none border-0 flex-shrink min-w-[100px]"
                   spellCheck={false}
                 />
 
@@ -307,7 +307,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                 {/* Inline Python code (shown when expanded) */}
                 {hasCode && isExpanded && (
                   <>
-                    <span className="text-xs font-mono text-gray-400 ml-4 py-2 whitespace-nowrap">
+                    <span className="text-xs font-mono text-gray-400 ml-4 py-2">
                       {pythonCode.split('\n').map((codeLine, i) => (
                         <span key={i} className={codeLine.startsWith('#') ? 'text-gray-500' : 'text-gray-400'}>
                           {codeLine}{i < pythonCode.split('\n').length - 1 ? ' | ' : ''}
@@ -322,9 +322,11 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                     >
                       <span className="text-xs">◀</span>
                     </button>
-                    <div className="flex-1" />
                   </>
                 )}
+
+                {/* Spacer to fill remaining space */}
+                <div className="flex-1" />
               </div>
             </div>
           );
