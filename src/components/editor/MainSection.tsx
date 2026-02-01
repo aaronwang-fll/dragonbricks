@@ -272,7 +272,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
               {/* Main row - flex wrap for long content */}
               <div className="flex flex-wrap items-center">
                 {/* Line number */}
-                <span className="w-8 text-xs text-gray-600 text-right pr-2 flex-shrink-0 select-none border-r border-gray-700 mr-1">
+                <span className="w-8 text-xs text-gray-600 text-right pr-3 flex-shrink-0 select-none border-r border-gray-700 mr-0">
                   {index + 1}
                 </span>
 
