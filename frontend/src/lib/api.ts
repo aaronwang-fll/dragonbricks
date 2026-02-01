@@ -191,22 +191,7 @@ class ApiClient {
     });
   }
 
-  // LLM parsing (legacy - use parseCommands instead)
-  async parseWithLLM(command: string, context?: string) {
-    return this.request<LLMParseResult>('/llm/parse', {
-      method: 'POST',
-      body: JSON.stringify({ command, context }),
-    });
-  }
-
-  async batchParseWithLLM(commands: string[], context?: string) {
-    return this.request<{ results: LLMParseResult[]; total_tokens: number }>('/llm/parse/batch', {
-      method: 'POST',
-      body: JSON.stringify({ commands, context }),
-    });
-  }
-
-  // Parser endpoints (new - backend handles all parsing)
+  // Parser endpoints
   async parseCommands(commands: string[], config: RobotConfig, routines: RoutineInput[] = []) {
     return this.request<ParseResponse>('/parser/parse', {
       method: 'POST',
@@ -343,16 +328,7 @@ export interface Defaults {
   forcePort: string;
 }
 
-export interface LLMParseResult {
-  success: boolean;
-  python_code?: string;
-  error?: string;
-  provider: string;
-  model: string;
-  tokens_used?: number;
-}
-
-// Parser types (new backend parser)
+// Parser types
 export interface RobotConfig {
   left_motor_port: string;
   right_motor_port: string;
