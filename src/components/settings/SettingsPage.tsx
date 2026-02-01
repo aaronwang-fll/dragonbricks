@@ -15,11 +15,11 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="px-3 py-2 border border-gray-600 rounded bg-gray-700 text-white min-w-[100px]"
+      className="px-2 py-1 text-sm border border-gray-600 rounded bg-gray-700 text-white"
     >
       {allowNone && <option value="None">None</option>}
       {PORTS.map(p => (
-        <option key={p} value={p}>Port {p}</option>
+        <option key={p} value={p}>{p}</option>
       ))}
     </select>
   );
