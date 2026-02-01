@@ -101,7 +101,7 @@ export function RoutinesSection() {
   }, []);
 
   return (
-    <div ref={sectionRef} className="bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 h-full overflow-hidden flex flex-col">
+    <div ref={sectionRef} className="bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 h-full overflow-y-auto flex flex-col">
       <button
         onClick={() => setShowRoutines(!showRoutines)}
         className="w-full px-3 py-2 flex items-center justify-between text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"

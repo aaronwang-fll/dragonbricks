@@ -17,7 +17,7 @@ interface ClarificationState {
 }
 
 export function EditorPanel() {
-  const { routinesHeight, setRoutinesHeight } = useEditorStore();
+  const { routinesHeight, setRoutinesHeight, showRoutines } = useEditorStore();
   const { resolveClarification } = useParser();
 
   const [clarification, setClarification] = useState<ClarificationState>({
@@ -57,7 +57,7 @@ export function EditorPanel() {
   }, []);
 
   return (
-    <div className="flex-1 flex flex-col border-r border-gray-200 dark:border-gray-700">
+    <div className="flex-1 flex flex-col border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
       {/* Setup Section - collapsible header */}
       <details open className="group">
         <summary className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase px-3 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 list-none flex items-center gap-2">
@@ -80,7 +80,7 @@ export function EditorPanel() {
 
       <ResizeHandle direction="vertical" onResize={handleRoutinesResize} />
 
-      <div style={{ height: routinesHeight, minHeight: 50 }}>
+      <div style={{ minHeight: showRoutines ? 200 : 50, maxHeight: showRoutines ? 400 : 50 }}>
         <RoutinesSection />
       </div>
 
