@@ -2,10 +2,11 @@ import { useCallback } from 'react';
 import { useEditorStore } from '../stores/editorStore';
 import { parseCommand } from '../lib/parser';
 import { extractRoutines, isRoutineCall, generateRoutineCall } from '../lib/parser/routines';
+import { parsewithLLM } from '../lib/parser/llmParser';
 import type { ParsedCommand, Routine } from '../types';
 
 export function useParser() {
-  const { defaults, setCommands, updateCommand, currentProgram, updateProgram } = useEditorStore();
+  const { defaults, setCommands, updateCommand, currentProgram, updateProgram, llmConfig } = useEditorStore();
 
   const parseInput = useCallback((input: string): ParsedCommand[] => {
     // First, extract routine definitions from the input
@@ -92,6 +93,53 @@ export function useParser() {
     };
   }, [defaults]);
 
+  // Parse with LLM fallback for complex commands
+  const parseWithLLMFallback = useCallback(async (
+    commandId: string,
+    input: string
+  ): Promise<void> => {
+    if (!llmConfig.enabled || !llmConfig.apiKey) {
+      return;
+    }
+
+    // Update status to show we're processing
+    updateCommand(commandId, {
+      status: 'pending',
+      error: 'Processing with AI...',
+    });
+
+    try {
+      const result = await parsewithLLM(input, {
+        provider: llmConfig.provider === 'none' ? 'openai' : llmConfig.provider,
+        apiKey: llmConfig.apiKey,
+        model: llmConfig.model,
+      });
+
+      if (result.success && result.pythonCode) {
+        updateCommand(commandId, {
+          pythonCode: result.pythonCode,
+          status: 'parsed',
+          error: undefined,
+        });
+      } else {
+        updateCommand(commandId, {
+          status: 'error',
+          error: result.error || 'AI parsing failed',
+        });
+      }
+    } catch (error) {
+      updateCommand(commandId, {
+        status: 'error',
+        error: error instanceof Error ? error.message : 'AI parsing failed',
+      });
+    }
+  }, [llmConfig, updateCommand]);
+
+  // Check if a command can benefit from LLM parsing
+  const canUseLLM = useCallback((): boolean => {
+    return llmConfig.enabled && !!llmConfig.apiKey && llmConfig.provider !== 'none';
+  }, [llmConfig]);
+
   const resolveClarification = useCallback((
     commandId: string,
     field: string,
@@ -139,5 +187,7 @@ export function useParser() {
     parseSingleCommand,
     resolveClarification,
     generateFullProgram,
+    parseWithLLMFallback,
+    canUseLLM,
   };
 }

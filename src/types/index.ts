@@ -66,6 +66,21 @@ export interface Routine {
   body: string;
 }
 
+// LLM Configuration
+export interface LLMConfig {
+  enabled: boolean;
+  provider: 'openai' | 'anthropic' | 'none';
+  apiKey: string;
+  model: string;
+}
+
+export const DEFAULT_LLM_CONFIG: LLMConfig = {
+  enabled: false,
+  provider: 'none',
+  apiKey: '',
+  model: '',
+};
+
 // Defaults
 export interface Defaults {
   speed: number;

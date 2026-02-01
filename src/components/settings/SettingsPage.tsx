@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useThemeStore } from '../../stores/themeStore';
 import { useEditorStore } from '../../stores/editorStore';
 
@@ -9,7 +10,8 @@ const PORTS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 export function SettingsPage({ onBack }: SettingsPageProps) {
   const { mode, setMode } = useThemeStore();
-  const { defaults, setDefaults } = useEditorStore();
+  const { defaults, setDefaults, llmConfig, updateLLMConfig } = useEditorStore();
+  const [showApiKey, setShowApiKey] = useState(false);
 
   const PortSelect = ({ value, onChange, allowNone = false }: { value: string; onChange: (v: string) => void; allowNone?: boolean }) => (
     <select
@@ -213,6 +215,114 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white"
                 />
               </div>
+            </div>
+          </section>
+
+          {/* AI Assistant */}
+          <section className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">AI Assistant (Optional)</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Enable AI to help parse complex commands that the rule-based parser can't handle.
+              Requires an API key from OpenAI or Anthropic.
+            </p>
+
+            <div className="space-y-4">
+              {/* Enable toggle */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="text-gray-700 dark:text-gray-300 font-medium">Enable AI Parsing</label>
+                  <p className="text-sm text-gray-500">Use AI for complex commands</p>
+                </div>
+                <button
+                  onClick={() => updateLLMConfig({ enabled: !llmConfig.enabled })}
+                  className={`w-12 h-6 rounded-full transition-colors ${
+                    llmConfig.enabled ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`block w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
+                      llmConfig.enabled ? 'translate-x-6' : 'translate-x-0.5'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {llmConfig.enabled && (
+                <>
+                  {/* Provider selection */}
+                  <div>
+                    <label className="block text-gray-700 dark:text-gray-300 mb-2">Provider</label>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => updateLLMConfig({ provider: 'openai', model: 'gpt-4o-mini' })}
+                        className={`px-4 py-2 rounded-lg transition-colors ${
+                          llmConfig.provider === 'openai'
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                        }`}
+                      >
+                        OpenAI
+                      </button>
+                      <button
+                        onClick={() => updateLLMConfig({ provider: 'anthropic', model: 'claude-3-haiku-20240307' })}
+                        className={`px-4 py-2 rounded-lg transition-colors ${
+                          llmConfig.provider === 'anthropic'
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                        }`}
+                      >
+                        Anthropic
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* API Key */}
+                  <div>
+                    <label className="block text-gray-700 dark:text-gray-300 mb-2">API Key</label>
+                    <div className="relative">
+                      <input
+                        type={showApiKey ? 'text' : 'password'}
+                        value={llmConfig.apiKey}
+                        onChange={(e) => updateLLMConfig({ apiKey: e.target.value })}
+                        placeholder={llmConfig.provider === 'openai' ? 'sk-...' : 'sk-ant-...'}
+                        className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white"
+                      />
+                      <button
+                        onClick={() => setShowApiKey(!showApiKey)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                      >
+                        {showApiKey ? '🙈' : '👁️'}
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Your API key is stored locally and never sent to our servers.
+                    </p>
+                  </div>
+
+                  {/* Model selection */}
+                  <div>
+                    <label className="block text-gray-700 dark:text-gray-300 mb-2">Model</label>
+                    <select
+                      value={llmConfig.model}
+                      onChange={(e) => updateLLMConfig({ model: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white"
+                    >
+                      {llmConfig.provider === 'openai' ? (
+                        <>
+                          <option value="gpt-4o-mini">GPT-4o Mini (Recommended)</option>
+                          <option value="gpt-4o">GPT-4o</option>
+                          <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                        </>
+                      ) : (
+                        <>
+                          <option value="claude-3-haiku-20240307">Claude 3 Haiku (Fast)</option>
+                          <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+                </>
+              )}
             </div>
           </section>
 

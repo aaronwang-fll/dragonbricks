@@ -14,6 +14,8 @@ export interface ParseResult {
   };
   error?: string;
   confidence: number;
+  commandType?: 'simple' | 'sensor' | 'loop' | 'parallel' | 'mission' | 'call' | 'line_follow';
+  needsLLM?: boolean; // Flag when command is too complex for rule-based parsing
 }
 
 export function parseCommand(
@@ -28,8 +30,22 @@ export function parseCommand(
   }
 
   // Try to match different command patterns
-  // Order matters: more specific patterns first
+  // Order matters: more specific/complex patterns first
 
+  // Advanced FLL patterns first
+  const repeatResult = tryParseRepeat(tokens, input);
+  if (repeatResult) return repeatResult;
+
+  const sensorWaitResult = tryParseSensorWait(tokens);
+  if (sensorWaitResult) return sensorWaitResult;
+
+  const lineFollowResult = tryParseLineFollow(tokens);
+  if (lineFollowResult) return lineFollowResult;
+
+  const parallelResult = tryParseParallel(tokens, input);
+  if (parallelResult) return parallelResult;
+
+  // Basic patterns
   const stopResult = tryParseStop(tokens, motorNames);
   if (stopResult) return stopResult;
 
@@ -39,6 +55,10 @@ export function parseCommand(
 
   const motorResult = tryParseMotor(tokens, defaults, motorNames);
   if (motorResult) return motorResult;
+
+  // Precise turn (with PI control)
+  const preciseTurnResult = tryParsePreciseTurn(tokens, defaults);
+  if (preciseTurnResult) return preciseTurnResult;
 
   // Turn and Move before Wait - they're more common and specific
   const turnResult = tryParseTurn(tokens, defaults);
@@ -50,11 +70,12 @@ export function parseCommand(
   const waitResult = tryParseWait(tokens);
   if (waitResult) return waitResult;
 
-  // No pattern matched
+  // No pattern matched - flag for LLM
   return {
     success: false,
     error: 'Could not parse command',
     confidence: 0,
+    needsLLM: true,
   };
 }
 
@@ -395,6 +416,218 @@ function tryParseSetSpeed(tokens: Token[]): ParseResult | null {
   return {
     success: true,
     pythonCode: `robot.settings(straight_speed=${speedValue})`,
+    confidence: 0.9,
+  };
+}
+
+// Advanced FLL Patterns
+
+function tryParseRepeat(tokens: Token[], _input: string): ParseResult | null {
+  const hasRepeat = tokens.some((t) => t.type === 'repeat');
+
+  if (!hasRepeat) return null;
+
+  const number = tokens.find((t) => t.type === 'number');
+
+  if (!number) {
+    return {
+      success: false,
+      needsClarification: {
+        field: 'count',
+        message: 'How many times should the action repeat?',
+        type: 'distance', // Reusing distance type for numeric input
+      },
+      confidence: 0.7,
+      commandType: 'loop',
+    };
+  }
+
+  const count = number.numericValue || 1;
+
+  // Find the action after "times" or ":"
+  const timesIndex = tokens.findIndex((t) => t.type === 'times');
+  const colonIndex = tokens.findIndex((t) => t.value === ':');
+  const actionStartIndex = Math.max(timesIndex, colonIndex) + 1;
+
+  if (actionStartIndex >= tokens.length || actionStartIndex <= 0) {
+    return {
+      success: true,
+      pythonCode: `for i in range(${count}):\n    # Add commands here\n    pass`,
+      confidence: 0.7,
+      commandType: 'loop',
+    };
+  }
+
+  return {
+    success: true,
+    pythonCode: `for i in range(${count}):`,
+    confidence: 0.85,
+    commandType: 'loop',
+  };
+}
+
+function tryParseSensorWait(tokens: Token[]): ParseResult | null {
+  const hasUntil = tokens.some((t) => t.type === 'until');
+  const hasWhile = tokens.some((t) => t.type === 'while');
+  const hasSensor = tokens.some((t) => t.type === 'sensor');
+  const hasColor = tokens.some((t) => t.type === 'color');
+
+  if ((!hasUntil && !hasWhile) || (!hasSensor && !hasColor)) return null;
+
+  const sensorToken = tokens.find((t) => t.type === 'sensor');
+  const colorToken = tokens.find((t) => t.type === 'color');
+  const comparisonToken = tokens.find((t) => t.type === 'comparison');
+  const numberToken = tokens.find((t) => t.type === 'number');
+
+  // "wait until color sensor sees black"
+  if (colorToken && hasSensor) {
+    const sensorName = sensorToken?.normalized || 'color_sensor';
+    return {
+      success: true,
+      pythonCode: `while ${sensorName}.color() != Color.${colorToken.normalized?.toUpperCase()}:\n    wait(10)`,
+      confidence: 0.85,
+      commandType: 'sensor',
+    };
+  }
+
+  // "wait until light sensor > 50" or "while reflection < 20"
+  if (sensorToken && numberToken) {
+    const sensorName = sensorToken.normalized || 'sensor';
+    const comparison = comparisonToken?.normalized || '>';
+    const value = numberToken.numericValue || 50;
+
+    // Determine sensor method based on type
+    let sensorMethod = 'reflection()';
+    if (sensorName === 'distance' || sensorName === 'ultrasonic') {
+      sensorMethod = 'distance()';
+    } else if (sensorName === 'force') {
+      sensorMethod = 'force()';
+    } else if (sensorName === 'gyro') {
+      sensorMethod = 'angle()';
+    }
+
+    const condition = hasWhile ? comparison : (comparison === '>' ? '<=' : '>=');
+
+    return {
+      success: true,
+      pythonCode: `while ${sensorName}.${sensorMethod} ${condition} ${value}:\n    wait(10)`,
+      confidence: 0.85,
+      commandType: 'sensor',
+    };
+  }
+
+  return null;
+}
+
+function tryParseLineFollow(tokens: Token[]): ParseResult | null {
+  const hasFollow = tokens.some((t) => t.type === 'follow');
+  const hasLine = tokens.some((t) => t.type === 'line');
+
+  if (!hasFollow || !hasLine) return null;
+
+  const hasUntil = tokens.some((t) => t.type === 'until');
+  const numberToken = tokens.find((t) => t.type === 'number');
+  const unitToken = tokens.find((t) => t.type === 'unit');
+
+  // Calculate distance if provided
+  let distance = 0;
+  if (numberToken) {
+    distance = numberToken.numericValue || 0;
+    if (unitToken) {
+      const conversion = patterns.UNIT_CONVERSIONS[unitToken.normalized || unitToken.value];
+      if (conversion) {
+        distance *= conversion;
+      }
+    }
+  }
+
+  // Basic line follow code
+  const lineFollowCode = `# Line following - adjust threshold and speed as needed
+threshold = 50
+while True:
+    error = left_light.reflection() - threshold
+    correction = error * 1.0  # Adjust gain as needed
+    left.run(200 - correction)
+    right.run(200 + correction)
+    ${distance > 0 ? `if robot.distance() >= ${distance}:\n        break` : hasUntil ? '# Add stop condition' : ''}
+    wait(10)
+robot.stop()`;
+
+  return {
+    success: true,
+    pythonCode: lineFollowCode,
+    confidence: 0.75,
+    commandType: 'line_follow',
+  };
+}
+
+function tryParseParallel(tokens: Token[], input: string): ParseResult | null {
+  const hasParallel = tokens.some((t) => t.type === 'parallel');
+  const hasAnd = input.toLowerCase().includes(' and ');
+
+  if (!hasParallel && !hasAnd) return null;
+
+  // Simple parallel detection - "simultaneously move forward and rotate arm"
+  if (hasParallel) {
+    return {
+      success: true,
+      pythonCode: `async def task1():\n    # First action\n    pass\n\nasync def task2():\n    # Second action\n    pass\n\nawait multitask(task1(), task2())`,
+      confidence: 0.7,
+      commandType: 'parallel',
+      needsLLM: true, // Complex parallel needs LLM to parse actions
+    };
+  }
+
+  return null;
+}
+
+function tryParsePreciseTurn(tokens: Token[], _defaults: Defaults): ParseResult | null {
+  const hasTurnVerb = tokens.some(
+    (t) => t.type === 'verb' && patterns.TURN_VERBS.includes(t.normalized || t.value)
+  );
+  const hasPrecise = tokens.some((t) => t.type === 'precise');
+  const direction = tokens.find((t) => t.type === 'direction');
+
+  if (!hasTurnVerb || !hasPrecise) return null;
+  if (direction && !['left', 'right'].includes(direction.normalized || '')) return null;
+
+  const angleToken = tokens.find((t) => t.type === 'number');
+
+  if (!angleToken) {
+    return {
+      success: false,
+      needsClarification: {
+        field: 'angle',
+        message: 'What angle should the robot turn precisely?',
+        type: 'angle',
+      },
+      confidence: 0.7,
+    };
+  }
+
+  let angle = angleToken.numericValue || 0;
+
+  // Negative for left turn
+  if (direction?.normalized === 'left') {
+    angle = -angle;
+  }
+
+  // Generate PI turn code
+  return {
+    success: true,
+    pythonCode: `# Precise turn using gyro feedback
+target_angle = hub.imu.heading() + ${angle}
+while abs(hub.imu.heading() - target_angle) > 1:
+    error = target_angle - hub.imu.heading()
+    speed = max(30, min(200, abs(error) * 2))
+    if error > 0:
+        left.run(-speed)
+        right.run(speed)
+    else:
+        left.run(speed)
+        right.run(-speed)
+    wait(10)
+robot.stop()`,
     confidence: 0.9,
   };
 }

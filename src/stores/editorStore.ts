@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import type { Program, ParsedCommand, Defaults } from '../types';
-import { DEFAULT_VALUES } from '../types';
+import type { Program, ParsedCommand, Defaults, LLMConfig } from '../types';
+import { DEFAULT_VALUES, DEFAULT_LLM_CONFIG } from '../types';
 
 // Create initial default program
 const initialProgram: Program = {
@@ -24,6 +24,9 @@ interface EditorState {
 
   // Defaults
   defaults: Defaults;
+
+  // LLM Configuration
+  llmConfig: LLMConfig;
 
   // UI state
   expandedCommands: Set<string>;
@@ -54,6 +57,9 @@ interface EditorState {
 
   setDefaults: (defaults: Defaults) => void;
   updateDefaults: (updates: Partial<Defaults>) => void;
+
+  setLLMConfig: (config: LLMConfig) => void;
+  updateLLMConfig: (updates: Partial<LLMConfig>) => void;
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -61,6 +67,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   programs: [initialProgram],
   commands: [],
   defaults: DEFAULT_VALUES,
+  llmConfig: DEFAULT_LLM_CONFIG,
   expandedCommands: new Set(),
   showRoutines: false,
   setupHeight: 150,
@@ -123,5 +130,10 @@ export const useEditorStore = create<EditorState>((set) => ({
   setDefaults: (defaults) => set({ defaults }),
   updateDefaults: (updates) => set((state) => ({
     defaults: { ...state.defaults, ...updates },
+  })),
+
+  setLLMConfig: (config) => set({ llmConfig: config }),
+  updateLLMConfig: (updates) => set((state) => ({
+    llmConfig: { ...state.llmConfig, ...updates },
   })),
 }));

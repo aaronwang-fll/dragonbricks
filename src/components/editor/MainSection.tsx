@@ -287,7 +287,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
 
                 {/* Natural language input */}
                 <input
-                  ref={el => inputRefs.current[index] = el}
+                  ref={el => { inputRefs.current[index] = el; }}
                   type="text"
                   value={line}
                   onChange={(e) => handleLineChange(index, e.target.value)}

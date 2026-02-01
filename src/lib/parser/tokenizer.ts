@@ -2,7 +2,9 @@ import { findBestMatch } from './fuzzyMatch';
 import * as patterns from './patterns';
 
 export interface Token {
-  type: 'verb' | 'direction' | 'number' | 'unit' | 'color' | 'motor' | 'speed' | 'word' | 'unknown';
+  type: 'verb' | 'direction' | 'number' | 'unit' | 'color' | 'motor' | 'speed' | 'word' | 'unknown' |
+        'repeat' | 'times' | 'define' | 'mission' | 'sensor' | 'condition' | 'comparison' |
+        'until' | 'while' | 'parallel' | 'precise' | 'if' | 'then' | 'else' | 'line' | 'follow' | 'call';
   value: string;
   normalized?: string;
   numericValue?: number;
@@ -21,6 +23,8 @@ const ALL_VERBS = [
   ...patterns.RUN_VERBS,
   ...patterns.STOP_VERBS,
   ...patterns.SET_VERBS,
+  ...patterns.FOLLOW_VERBS,
+  ...patterns.CALL_VERBS,
 ];
 
 const ALL_DIRECTIONS = [
@@ -69,12 +73,81 @@ export function tokenize(input: string): Token[] {
 }
 
 function classifyWord(word: string): Token {
-  // Ignore filler words
-  if (FILLER_WORDS.includes(word)) {
+  // Ignore filler words (but not 'and' which is used for parallel)
+  if (FILLER_WORDS.includes(word) && word !== 'and') {
     return { type: 'word', value: word };
   }
 
-  // Try exact matches first
+  // Advanced FLL patterns - check these first as they're more specific
+  if (patterns.REPEAT_VERBS.includes(word)) {
+    return { type: 'repeat', value: word, normalized: 'repeat' };
+  }
+
+  if (patterns.TIMES_WORDS.includes(word)) {
+    return { type: 'times', value: word, normalized: 'times' };
+  }
+
+  if (patterns.DEFINE_VERBS.includes(word)) {
+    return { type: 'define', value: word, normalized: 'define' };
+  }
+
+  if (patterns.MISSION_WORDS.includes(word)) {
+    return { type: 'mission', value: word, normalized: 'mission' };
+  }
+
+  if (patterns.SENSOR_WORDS.includes(word)) {
+    return { type: 'sensor', value: word, normalized: word };
+  }
+
+  if (patterns.UNTIL_WORDS.includes(word)) {
+    return { type: 'until', value: word, normalized: 'until' };
+  }
+
+  if (patterns.WHILE_WORDS.includes(word)) {
+    return { type: 'while', value: word, normalized: 'while' };
+  }
+
+  if (patterns.CONDITION_WORDS.includes(word)) {
+    return { type: 'condition', value: word, normalized: word };
+  }
+
+  if (patterns.COMPARISON_WORDS.includes(word)) {
+    return { type: 'comparison', value: word, normalized: normalizeComparison(word) };
+  }
+
+  if (patterns.PARALLEL_WORDS.includes(word)) {
+    return { type: 'parallel', value: word, normalized: 'parallel' };
+  }
+
+  if (patterns.PRECISE_WORDS.includes(word)) {
+    return { type: 'precise', value: word, normalized: 'precise' };
+  }
+
+  if (patterns.IF_WORDS.includes(word)) {
+    return { type: 'if', value: word, normalized: 'if' };
+  }
+
+  if (patterns.THEN_WORDS.includes(word)) {
+    return { type: 'then', value: word, normalized: 'then' };
+  }
+
+  if (patterns.ELSE_WORDS.includes(word)) {
+    return { type: 'else', value: word, normalized: 'else' };
+  }
+
+  if (patterns.LINE_WORDS.includes(word)) {
+    return { type: 'line', value: word, normalized: 'line' };
+  }
+
+  if (patterns.FOLLOW_VERBS.includes(word)) {
+    return { type: 'follow', value: word, normalized: 'follow' };
+  }
+
+  if (patterns.CALL_VERBS.includes(word)) {
+    return { type: 'call', value: word, normalized: 'call' };
+  }
+
+  // Try exact matches for basic verbs
   if (ALL_VERBS.includes(word)) {
     return { type: 'verb', value: word, normalized: word };
   }
@@ -124,6 +197,13 @@ function classifyWord(word: string): Token {
   }
 
   return { type: 'word', value: word };
+}
+
+function normalizeComparison(comp: string): string {
+  if (['greater', 'more', 'above'].includes(comp)) return '>';
+  if (['less', 'below'].includes(comp)) return '<';
+  if (['equals', 'equal'].includes(comp)) return '==';
+  return comp;
 }
 
 function normalizeDirection(dir: string): string {
