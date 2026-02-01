@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useEditorStore } from '../editorStore';
-import type { Program, ParsedCommand } from '../../types';
+import type { Program, ParsedCommand, Defaults } from '../../types';
+import { DEFAULT_VALUES } from '../../types';
 
 describe('editorStore', () => {
   beforeEach(() => {
@@ -9,6 +10,7 @@ describe('editorStore', () => {
       programs: [],
       currentProgram: null,
       commands: [],
+      defaults: DEFAULT_VALUES,
       expandedCommands: new Set(),
       showRoutines: false,
       setupHeight: 150,
@@ -95,8 +97,8 @@ describe('editorStore', () => {
 
   describe('command expansion', () => {
     const testCommands: ParsedCommand[] = [
-      { id: 'cmd-1', naturalLanguage: 'move forward 100', status: 'parsed' },
-      { id: 'cmd-2', naturalLanguage: 'turn right 90', status: 'parsed' },
+      { id: 'cmd-1', naturalLanguage: 'move forward 100', pythonCode: 'robot.straight(100)', status: 'parsed' },
+      { id: 'cmd-2', naturalLanguage: 'turn right 90', pythonCode: 'robot.turn(90)', status: 'parsed' },
     ];
 
     beforeEach(() => {
@@ -154,7 +156,11 @@ describe('editorStore', () => {
 
   describe('defaults', () => {
     it('sets defaults', () => {
-      const newDefaults = { speed: 300, turnRate: 200, motorSpeed: 500, wheelDiameter: 60, axleTrack: 120 };
+      const newDefaults: Defaults = {
+        ...DEFAULT_VALUES,
+        speed: 300,
+        turnRate: 200,
+      };
       useEditorStore.getState().setDefaults(newDefaults);
       expect(useEditorStore.getState().defaults.speed).toBe(300);
     });
@@ -164,14 +170,6 @@ describe('editorStore', () => {
       expect(useEditorStore.getState().defaults.speed).toBe(400);
       // Other defaults should remain unchanged
       expect(useEditorStore.getState().defaults.turnRate).toBeDefined();
-    });
-  });
-
-  describe('LLM config', () => {
-    it('updates LLM config', () => {
-      useEditorStore.getState().updateLLMConfig({ provider: 'openai', model: 'gpt-4o' });
-      expect(useEditorStore.getState().llmConfig.provider).toBe('openai');
-      expect(useEditorStore.getState().llmConfig.model).toBe('gpt-4o');
     });
   });
 });

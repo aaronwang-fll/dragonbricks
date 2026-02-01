@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { api, Program, ProgramListItem, ProgramCreate } from '../lib/api';
+import { api } from '../lib/api';
+import type { Program, ProgramListItem, ProgramCreate } from '../lib/api';
 
 interface ProgramState {
   programs: ProgramListItem[];

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useEditorStore } from '../../stores/editorStore';
 import { useParser } from '../../hooks/useParser';
+import { Autocomplete, useAutocomplete } from './Autocomplete';
 
 interface MainSectionProps {
   onClarificationNeeded?: (commandId: string, clarification: {
@@ -15,10 +16,14 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
   const [expandedLines, setExpandedLines] = useState<Set<number>>(new Set());
   const [allExpanded, setAllExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [activeLineIndex, setActiveLineIndex] = useState(0);
+  const [cursorPosition, setCursorPosition] = useState(0);
   const { commands, defaults } = useEditorStore();
   const { parseInput } = useParser();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { isOpen: autocompleteOpen, position: autocompletePosition, showAutocomplete, hideAutocomplete } = useAutocomplete();
 
   // Parse all lines with debounce
   useEffect(() => {
@@ -46,11 +51,66 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
       newLines[index] = value;
       return newLines;
     });
+    hideAutocomplete(); // Close autocomplete when typing
+  }, [hideAutocomplete]);
+
+  const handleAutocompleteSelect = useCallback((newValue: string, newCursorPos: number) => {
+    // The autocomplete works with full text, so we need to update just the active line
+    setLines(prev => {
+      const newLines = [...prev];
+      newLines[activeLineIndex] = newValue;
+      return newLines;
+    });
+    hideAutocomplete();
+    // Focus and set cursor position
+    setTimeout(() => {
+      const input = inputRefs.current[activeLineIndex];
+      if (input) {
+        input.focus();
+        input.setSelectionRange(newCursorPos, newCursorPos);
+      }
+    }, 0);
+  }, [activeLineIndex, hideAutocomplete]);
+
+  const handleInputClick = useCallback((index: number, e: React.MouseEvent<HTMLInputElement>) => {
+    const input = e.currentTarget;
+    setCursorPosition(input.selectionStart || 0);
+    setActiveLineIndex(index);
   }, []);
 
   const handleKeyDown = useCallback((index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Ctrl+Space to show autocomplete
+    if (e.ctrlKey && e.key === ' ') {
+      e.preventDefault();
+      const input = inputRefs.current[index];
+      if (input && containerRef.current) {
+        const rect = input.getBoundingClientRect();
+        const containerRect = containerRef.current.getBoundingClientRect();
+        showAutocomplete(
+          rect.left - containerRect.left,
+          rect.bottom - containerRect.top + 4
+        );
+        setActiveLineIndex(index);
+        setCursorPosition(input.selectionStart || 0);
+      }
+      return;
+    }
+
+    // Close autocomplete on Escape
+    if (e.key === 'Escape' && autocompleteOpen) {
+      e.preventDefault();
+      hideAutocomplete();
+      return;
+    }
+
+    // Let autocomplete handle arrow keys when open
+    if (autocompleteOpen && ['ArrowUp', 'ArrowDown', 'Tab', 'Enter'].includes(e.key)) {
+      return; // Autocomplete will handle these
+    }
+
     if (e.key === 'Enter') {
       e.preventDefault();
+      hideAutocomplete();
       // Add new line after current
       setLines(prev => {
         const newLines = [...prev];
@@ -69,14 +129,14 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
       setTimeout(() => {
         inputRefs.current[Math.max(0, index - 1)]?.focus();
       }, 0);
-    } else if (e.key === 'ArrowUp' && index > 0) {
+    } else if (e.key === 'ArrowUp' && index > 0 && !autocompleteOpen) {
       e.preventDefault();
       inputRefs.current[index - 1]?.focus();
-    } else if (e.key === 'ArrowDown' && index < lines.length - 1) {
+    } else if (e.key === 'ArrowDown' && index < lines.length - 1 && !autocompleteOpen) {
       e.preventDefault();
       inputRefs.current[index + 1]?.focus();
     }
-  }, [lines]);
+  }, [lines, autocompleteOpen, showAutocomplete, hideAutocomplete]);
 
   const toggleLine = useCallback((index: number) => {
     setExpandedLines(prev => {
@@ -197,7 +257,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
   const hasContent = lines.some(l => l.trim());
 
   return (
-    <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 overflow-hidden">
+    <div ref={containerRef} className="flex-1 flex flex-col bg-white dark:bg-gray-900 overflow-hidden relative">
       {/* Header with expand all and export options */}
       <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-3 text-xs text-gray-400">
@@ -292,7 +352,8 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                   value={line}
                   onChange={(e) => handleLineChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
-                  placeholder={index === 0 && !line ? 'Type command...' : ''}
+                  onClick={(e) => handleInputClick(index, e)}
+                  placeholder={index === 0 && !line ? 'Type command... (Ctrl+Space for suggestions)' : ''}
                   className="flex-1 bg-transparent text-sm font-mono text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 py-2 pl-0 pr-0 outline-none border-0 min-w-[100px]"
                   spellCheck={false}
                 />
@@ -345,9 +406,22 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
             <p className="text-xs text-gray-700">
               Examples: move forward 200mm • turn right 90 degrees • wait 1 second
             </p>
+            <p className="text-xs text-gray-500 mt-2">
+              Press Ctrl+Space for suggestions
+            </p>
           </div>
         </div>
       )}
+
+      {/* Autocomplete popup */}
+      <Autocomplete
+        value={lines[activeLineIndex] || ''}
+        cursorPosition={cursorPosition}
+        onSelect={handleAutocompleteSelect}
+        onClose={hideAutocomplete}
+        visible={autocompleteOpen}
+        position={autocompletePosition}
+      />
     </div>
   );
 }

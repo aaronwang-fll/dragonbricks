@@ -1,10 +1,11 @@
 import { useCallback, useState } from 'react';
 import { useEditorStore } from '../stores/editorStore';
-import { api, RobotConfig } from '../lib/api';
-import type { ParsedCommand, Routine } from '../types';
+import { api } from '../lib/api';
+import type { RobotConfig } from '../lib/api';
+import type { ParsedCommand } from '../types';
 
 export function useParser() {
-  const { defaults, setCommands, updateCommand, currentProgram, updateProgram } = useEditorStore();
+  const { defaults, setCommands, updateCommand, currentProgram } = useEditorStore();
   const [isLoading, setIsLoading] = useState(false);
   const [generatedCode, setGeneratedCode] = useState('');
 

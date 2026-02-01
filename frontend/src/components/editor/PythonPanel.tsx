@@ -1,76 +1,13 @@
 import { useState } from 'react';
-import { useEditorStore } from '../../stores/editorStore';
-import { parseRoutineDefinition } from '../../lib/parser/routines';
+import { useParser } from '../../hooks/useParser';
 
 export function PythonPanel() {
-  const { commands, defaults, currentProgram } = useEditorStore();
-  const routines = currentProgram?.routines || [];
+  const { generatedCode } = useParser();
   const [copied, setCopied] = useState(false);
 
-  // Generate the full Python code
-  const generateFullCode = () => {
-    const lines: string[] = [];
-
-    // Pybricks imports
-    lines.push('from pybricks.hubs import PrimeHub');
-    lines.push('from pybricks.pupdevices import Motor, ColorSensor, UltrasonicSensor, ForceSensor');
-    lines.push('from pybricks.parameters import Port, Direction, Stop, Color');
-    lines.push('from pybricks.robotics import DriveBase');
-    lines.push('from pybricks.tools import wait, StopWatch');
-    lines.push('');
-
-    // Hub initialization
-    lines.push('# Initialize hub');
-    lines.push('hub = PrimeHub()');
-    lines.push('');
-
-    // Motor setup (these would come from SetupSection config in real implementation)
-    lines.push('# Motors');
-    lines.push('left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)');
-    lines.push('right_motor = Motor(Port.B)');
-    lines.push('');
-
-    // DriveBase
-    lines.push('# DriveBase');
-    lines.push(`robot = DriveBase(left_motor, right_motor, wheel_diameter=${defaults.wheelDiameter}, axle_track=${defaults.axleTrack})`);
-    lines.push('');
-
-    // Routines (if any)
-    if (routines.length > 0) {
-      lines.push('# Routines');
-      routines.forEach((routine) => {
-        // Parse the routine body into Python
-        const routineLines = [`Define ${routine.name}${routine.parameters.length > 0 ? ` with ${routine.parameters.join(', ')}` : ''}:`, ...routine.body.split('\n').map(l => `  ${l}`)];
-        const parsed = parseRoutineDefinition(routineLines, defaults);
-        if (parsed) {
-          lines.push(parsed.pythonCode);
-          lines.push('');
-        }
-      });
-    }
-
-    // Main program
-    lines.push('# Main program');
-    commands.forEach((cmd) => {
-      if (cmd.pythonCode && cmd.status === 'parsed') {
-        lines.push(cmd.pythonCode);
-      } else if (cmd.status === 'error' && cmd.error) {
-        lines.push(`# Error: ${cmd.error}`);
-        lines.push(`# Original: ${cmd.naturalLanguage}`);
-      } else if (cmd.status === 'needs-clarification') {
-        lines.push(`# Needs input: ${cmd.naturalLanguage}`);
-      }
-    });
-
-    if (commands.length === 0 && routines.length === 0) {
-      lines.push('# Add commands in the Main section');
-      lines.push('# Example: "move forward 200mm"');
-    }
-
-    return lines.join('\n');
-  };
-
-  const code = generateFullCode();
+  const code = generatedCode || `# No commands yet
+# Enter commands in the Main section
+# Example: "move forward 200mm"`;
 
   const handleCopy = async () => {
     try {
@@ -100,6 +37,8 @@ export function PythonPanel() {
     URL.revokeObjectURL(url);
   };
 
+  const lines = code.split('\n');
+
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-800">
       {/* Header */}
@@ -126,12 +65,13 @@ export function PythonPanel() {
       {/* Code */}
       <div className="flex-1 overflow-auto p-3 bg-gray-50 dark:bg-gray-900">
         <pre className="text-xs font-mono text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-          {code.split('\n').map((line, i) => (
+          {lines.map((line, i) => (
             <div key={i} className="flex leading-5">
               <span className="w-8 text-gray-400 dark:text-gray-600 select-none text-right pr-2">{i + 1}</span>
               <span className={
                 line.startsWith('#') ? 'text-gray-400 dark:text-gray-500' :
                 line.startsWith('from ') || line.startsWith('import ') ? 'text-purple-600 dark:text-purple-400' :
+                line.includes('def ') ? 'text-blue-600 dark:text-blue-400' :
                 line.includes('=') ? 'text-blue-600 dark:text-blue-300' :
                 'text-gray-700 dark:text-gray-300'
               }>
@@ -144,7 +84,7 @@ export function PythonPanel() {
 
       {/* Footer status */}
       <div className="px-3 py-1 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
-        {commands.filter(c => c.status === 'parsed').length} / {commands.length} commands parsed
+        {lines.length} lines
       </div>
     </div>
   );

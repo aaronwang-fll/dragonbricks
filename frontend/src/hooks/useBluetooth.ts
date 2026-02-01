@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useConnectionStore } from '../stores/connectionStore';
-import { useProfileStore } from '../stores/profileStore';
-import { useEditorStore } from '../stores/editorStore';
+import { useParser } from './useParser';
 import {
   connectToHub,
   disconnectFromHub,
@@ -10,7 +9,6 @@ import {
   stopProgram,
   isBluetoothSupported,
 } from '../lib/bluetooth/pybricks';
-import { generateFullProgram } from '../lib/codegen';
 
 export function useBluetooth() {
   const [output, setOutput] = useState<string[]>([]);
@@ -23,8 +21,7 @@ export function useBluetooth() {
     disconnect: disconnectStore,
   } = useConnectionStore();
 
-  const { getCurrentProfile, useProfile } = useProfileStore();
-  const { commands, defaults } = useEditorStore();
+  const { generatedCode } = useParser();
 
   const isSupported = isBluetoothSupported();
 
@@ -75,15 +72,13 @@ export function useBluetooth() {
       return false;
     }
 
-    const profile = getCurrentProfile();
-    const pythonCommands = commands
-      .filter(cmd => cmd.status === 'parsed' && cmd.pythonCode)
-      .map(cmd => cmd.pythonCode as string);
+    if (!generatedCode) {
+      setError('No program to run. Enter some commands first.');
+      return false;
+    }
 
-    const program = generateFullProgram(profile, defaults, pythonCommands, useProfile);
-
-    // Upload and run
-    const uploaded = await uploadProgram(program.full);
+    // Upload and run the backend-generated code
+    const uploaded = await uploadProgram(generatedCode);
     if (!uploaded) {
       setError('Failed to upload program');
       return false;
@@ -97,7 +92,7 @@ export function useBluetooth() {
 
     setProgramStatus('running');
     return true;
-  }, [status, getCurrentProfile, commands, defaults, useProfile, setError, setProgramStatus]);
+  }, [status, generatedCode, setError, setProgramStatus]);
 
   const stop = useCallback(async () => {
     const stopped = await stopProgram();
