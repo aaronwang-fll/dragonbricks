@@ -216,11 +216,6 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
             </div>
           </section>
 
-          {/* More settings coming soon */}
-          <section className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-6 border border-dashed border-gray-300 dark:border-gray-700">
-            <p className="text-gray-500 text-center">more options coming soon</p>
-          </section>
-
         </div>
       </div>
     </div>
