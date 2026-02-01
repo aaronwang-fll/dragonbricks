@@ -49,13 +49,16 @@ class RobotConfig:
 def parse_command(
     input_str: str,
     config: Optional[RobotConfig] = None,
-    motor_names: Optional[List[str]] = None
+    motor_names: Optional[List[str]] = None,
+    routine_names: Optional[List[str]] = None
 ) -> ParseResult:
     """Parse a single natural language command."""
     if config is None:
         config = RobotConfig()
     if motor_names is None:
         motor_names = []
+    if routine_names is None:
+        routine_names = []
 
     tokens = tokenize(input_str)
 
@@ -65,7 +68,17 @@ def parse_command(
     # Try to match different command patterns
     # Order matters: more specific/complex patterns first
 
-    # Advanced FLL patterns first
+    # Check for routine calls first (highest priority)
+    result = try_parse_routine_call(tokens, input_str, routine_names)
+    if result:
+        return result
+
+    # Multitask patterns (e.g., "while driving, run motor")
+    result = try_parse_multitask(tokens, input_str, config, motor_names)
+    if result:
+        return result
+
+    # Advanced FLL patterns
     result = try_parse_repeat(tokens, input_str)
     if result:
         return result
@@ -734,4 +747,166 @@ while abs(hub.imu.heading() - target_angle) > 1:
 robot.stop()''',
         confidence=0.9,
         command_type='precise_turn'
+    )
+
+
+def try_parse_routine_call(
+    tokens: List[Token],
+    input_str: str,
+    routine_names: List[str]
+) -> Optional[ParseResult]:
+    """Parse routine/function call commands.
+
+    Handles patterns like:
+    - "run mission1"
+    - "call grab_object"
+    - "execute turn_around"
+    - "mission1" (direct name reference)
+    - "square with 200" (with parameters)
+    """
+    if not routine_names:
+        return None
+
+    has_call = has_token_type(tokens, 'call')
+    input_lower = input_str.lower().strip()
+
+    # Check for direct routine name match
+    matched_routine = None
+    params_str = ''
+
+    for routine_name in routine_names:
+        # Check if input starts with routine name
+        if input_lower.startswith(routine_name):
+            matched_routine = routine_name
+            # Extract parameters after routine name
+            rest = input_lower[len(routine_name):].strip()
+            if rest.startswith('with '):
+                params_str = rest[5:].strip()
+            elif rest:
+                params_str = rest
+            break
+
+        # Check for "call/run/execute routine_name"
+        for prefix in ['run ', 'call ', 'execute ', 'start ']:
+            if input_lower.startswith(prefix + routine_name):
+                matched_routine = routine_name
+                rest = input_lower[len(prefix + routine_name):].strip()
+                if rest.startswith('with '):
+                    params_str = rest[5:].strip()
+                elif rest:
+                    params_str = rest
+                break
+
+        if matched_routine:
+            break
+
+    if not matched_routine:
+        return None
+
+    # Parse parameters
+    params = []
+    if params_str:
+        # Extract numbers from params string
+        import re
+        numbers = re.findall(r'-?\d+(?:\.\d+)?', params_str)
+        params = numbers
+
+    # Generate function call
+    if params:
+        python_code = f'{matched_routine}({", ".join(params)})'
+    else:
+        python_code = f'{matched_routine}()'
+
+    return ParseResult(
+        success=True,
+        python_code=python_code,
+        confidence=0.95,
+        command_type='routine_call'
+    )
+
+
+def try_parse_multitask(
+    tokens: List[Token],
+    input_str: str,
+    config: RobotConfig,
+    motor_names: List[str]
+) -> Optional[ParseResult]:
+    """Parse multitask/parallel execution commands.
+
+    Handles patterns like:
+    - "while driving forward, run arm motor 180 degrees"
+    - "move forward 200mm while running grabber"
+    - "simultaneously move forward and turn motor"
+
+    Pybricks multitask reference: https://docs.pybricks.com/en/latest/tools/index.html#pybricks.tools.multitask
+    """
+    input_lower = input_str.lower()
+
+    # Check for parallel indicators
+    has_while = ' while ' in input_lower
+    has_simultaneously = 'simultaneously' in input_lower
+    has_at_same_time = 'at the same time' in input_lower
+    has_parallel_and = ' and ' in input_lower and any(
+        w in input_lower for w in ['move', 'drive', 'turn', 'run', 'motor']
+    )
+
+    if not (has_while or has_simultaneously or has_at_same_time or has_parallel_and):
+        return None
+
+    # Split into two tasks
+    task1_desc = ''
+    task2_desc = ''
+
+    if has_while:
+        parts = input_lower.split(' while ')
+        if len(parts) == 2:
+            task1_desc = parts[0].strip()
+            task2_desc = parts[1].strip()
+    elif has_simultaneously:
+        # "simultaneously A and B"
+        rest = input_lower.replace('simultaneously', '').strip()
+        if ' and ' in rest:
+            parts = rest.split(' and ', 1)
+            task1_desc = parts[0].strip()
+            task2_desc = parts[1].strip()
+    elif has_at_same_time:
+        rest = input_lower.replace('at the same time', '').strip()
+        if ' and ' in rest:
+            parts = rest.split(' and ', 1)
+            task1_desc = parts[0].strip()
+            task2_desc = parts[1].strip()
+    elif has_parallel_and:
+        parts = input_lower.split(' and ', 1)
+        task1_desc = parts[0].strip()
+        task2_desc = parts[1].strip() if len(parts) > 1 else ''
+
+    if not task1_desc or not task2_desc:
+        return None
+
+    # Parse each task independently
+    task1_result = parse_command(task1_desc, config, motor_names, [])
+    task2_result = parse_command(task2_desc, config, motor_names, [])
+
+    # Generate multitask code
+    task1_code = task1_result.python_code if task1_result.success else f'# TODO: {task1_desc}'
+    task2_code = task2_result.python_code if task2_result.success else f'# TODO: {task2_desc}'
+
+    # Indent task code
+    task1_indented = '\n    '.join(task1_code.split('\n'))
+    task2_indented = '\n    '.join(task2_code.split('\n'))
+
+    multitask_code = f'''# Parallel execution: {task1_desc} AND {task2_desc}
+async def task1():
+    {task1_indented}
+
+async def task2():
+    {task2_indented}
+
+await multitask(task1(), task2())'''
+
+    return ParseResult(
+        success=True,
+        python_code=multitask_code,
+        confidence=0.85,
+        command_type='multitask'
     )

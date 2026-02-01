@@ -2,6 +2,38 @@ import { useState } from 'react';
 import { useEditorStore } from '../../stores/editorStore';
 import type { Program } from '../../types';
 
+// FLL Tutorial Examples organized by category
+const TUTORIAL_EXAMPLES = {
+  'Basic Movement': [
+    { name: 'Move forward', command: 'move forward 200mm' },
+    { name: 'Move backward', command: 'move backward 100mm' },
+    { name: 'Turn left', command: 'turn left 90 degrees' },
+    { name: 'Turn right', command: 'turn right 45 degrees' },
+  ],
+  'Sensors': [
+    { name: 'Drive to black line', command: 'go forward until the light sensor detects black' },
+    { name: 'Drive to white', command: 'go forward until the color sensor detects white' },
+    { name: 'Wait for color', command: 'wait until color sensor detects red' },
+    { name: 'Distance trigger', command: 'go forward until distance sensor < 100' },
+  ],
+  'Motors & Control': [
+    { name: 'Run motor', command: 'run motor 180 degrees' },
+    { name: 'Set speed', command: 'set speed to 300' },
+    { name: 'Wait', command: 'wait 2 seconds' },
+    { name: 'Stop', command: 'stop' },
+  ],
+  'Advanced': [
+    { name: 'Repeat', command: 'repeat 3 times' },
+    { name: 'Precise turn', command: 'turn left precisely 90 degrees' },
+    { name: 'Follow line', command: 'follow line for 500mm' },
+    { name: 'Parallel task', command: 'move forward 200mm while running motor 180 degrees' },
+  ],
+  'Routines': [
+    { name: 'Define routine', command: '# Define in Routines section:\n# Name: grab_object\n# Body: run motor 90 degrees' },
+    { name: 'Call routine', command: 'run grab_object' },
+  ],
+};
+
 export function Sidebar() {
   const { programs, currentProgram, setCurrentProgram, addProgram, updateProgram, deleteProgram } = useEditorStore();
   const [showNewDialog, setShowNewDialog] = useState(false);
@@ -9,6 +41,8 @@ export function Sidebar() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [showExamples, setShowExamples] = useState(false);
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
   const handleNewFile = () => {
     setNewFileName('');
@@ -77,6 +111,11 @@ export function Sidebar() {
     setContextMenu({ id, x: e.clientX, y: e.clientY });
   };
 
+  const handleCopyExample = (command: string) => {
+    navigator.clipboard.writeText(command);
+    // Could add a toast notification here
+  };
+
   return (
     <aside className="w-48 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col overflow-visible z-10">
       {/* New button at top */}
@@ -95,7 +134,7 @@ export function Sidebar() {
       </div>
 
       {/* File list */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto min-h-0">
         {programs.length === 0 ? (
           <div className="p-3 text-sm text-gray-400 text-center">
             No programs yet
@@ -171,6 +210,56 @@ export function Sidebar() {
               )}
             </div>
           ))
+        )}
+      </div>
+
+      {/* Examples section */}
+      <div className="border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <button
+          onClick={() => setShowExamples(!showExamples)}
+          className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-800"
+        >
+          <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+            Examples
+          </span>
+          <span className={`text-xs text-gray-400 transition-transform ${showExamples ? 'rotate-180' : ''}`}>
+            ▼
+          </span>
+        </button>
+
+        {showExamples && (
+          <div className="max-h-64 overflow-y-auto bg-white dark:bg-gray-800">
+            {Object.entries(TUTORIAL_EXAMPLES).map(([category, examples]) => (
+              <div key={category}>
+                <button
+                  onClick={() => setExpandedCategory(expandedCategory === category ? null : category)}
+                  className="w-full px-3 py-1.5 text-left text-xs font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center gap-1"
+                >
+                  <span className={`text-[10px] transition-transform ${expandedCategory === category ? 'rotate-90' : ''}`}>
+                    ▶
+                  </span>
+                  {category}
+                </button>
+                {expandedCategory === category && (
+                  <div className="py-1">
+                    {examples.map((example, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleCopyExample(example.command)}
+                        className="w-full px-4 py-1 text-left text-xs text-gray-600 dark:text-gray-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 truncate"
+                        title={`Click to copy: ${example.command}`}
+                      >
+                        {example.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+            <div className="px-3 py-2 text-[10px] text-gray-400 dark:text-gray-500 text-center">
+              Click to copy command
+            </div>
+          </div>
         )}
       </div>
 

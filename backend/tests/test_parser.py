@@ -232,3 +232,85 @@ class TestParserEdgeCases:
         result = parse_command("move forward 1m", config)
         assert result.success
         assert "robot.straight(1000)" in result.python_code  # 1m = 1000mm
+
+
+# Parser tests - Routine calls
+class TestParserRoutineCalls:
+    @pytest.fixture
+    def config(self):
+        return RobotConfig()
+
+    def test_run_mission(self, config):
+        result = parse_command("run mission1", config, routine_names=["mission1", "mission2"])
+        assert result.success
+        assert result.python_code == "mission1()"
+        assert result.command_type == "routine_call"
+
+    def test_call_routine(self, config):
+        result = parse_command("call grab_object", config, routine_names=["grab_object"])
+        assert result.success
+        assert result.python_code == "grab_object()"
+
+    def test_execute_routine(self, config):
+        result = parse_command("execute turn_around", config, routine_names=["turn_around"])
+        assert result.success
+        assert result.python_code == "turn_around()"
+
+    def test_direct_routine_name(self, config):
+        result = parse_command("mission1", config, routine_names=["mission1"])
+        assert result.success
+        assert result.python_code == "mission1()"
+
+    def test_routine_with_params(self, config):
+        result = parse_command("square with 200", config, routine_names=["square"])
+        assert result.success
+        assert "square(200)" in result.python_code
+
+    def test_routine_no_match(self, config):
+        # When routine name doesn't exist, should not match
+        result = parse_command("run nonexistent", config, routine_names=["mission1"])
+        assert result.command_type != "routine_call"
+
+
+# Parser tests - Multitask/Parallel
+class TestParserMultitask:
+    @pytest.fixture
+    def config(self):
+        return RobotConfig()
+
+    def test_while_driving_run_motor(self, config):
+        result = parse_command(
+            "move forward 200mm while running motor 180 degrees",
+            config,
+            motor_names=["motor"]
+        )
+        assert result.success
+        assert result.command_type == "multitask"
+        assert "async def task1" in result.python_code
+        assert "async def task2" in result.python_code
+        assert "multitask" in result.python_code
+
+    def test_simultaneously(self, config):
+        result = parse_command(
+            "simultaneously move forward 100mm and turn right 45 degrees",
+            config
+        )
+        assert result.success
+        assert result.command_type == "multitask"
+        assert "multitask" in result.python_code
+
+    def test_at_same_time(self, config):
+        result = parse_command(
+            "move forward 200mm and run motor 90 degrees at the same time",
+            config,
+            motor_names=["motor"]
+        )
+        assert result.success
+        assert result.command_type == "multitask"
+
+    def test_simple_and_not_multitask(self, config):
+        # "wait and" shouldn't trigger multitask without movement
+        result = parse_command("wait 1 second", config)
+        assert result.success
+        assert result.command_type == "wait"
+        assert result.command_type != "multitask"

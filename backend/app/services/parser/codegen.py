@@ -1,55 +1,115 @@
 """
 Code generation for Pybricks Python programs.
+
+Pybricks Reference: https://docs.pybricks.com/en/latest/
 """
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
-from .parser import RobotConfig
+if TYPE_CHECKING:
+    from .parser import RobotConfig
+
+
+@dataclass
+class RoutineDefinition:
+    """Definition of a reusable routine/function."""
+    name: str
+    parameters: List[str]
+    body: str
 
 
 @dataclass
 class GeneratedProgram:
     imports: str
     setup: str
+    routines: str
     main: str
     full: str
 
 
 def generate_full_program(
-    config: RobotConfig,
-    commands: List[str]
+    config,  # RobotConfig
+    commands: List[str],
+    routines: Optional[List[RoutineDefinition]] = None,
+    uses_multitask: bool = False
 ) -> GeneratedProgram:
     """Generate a complete Pybricks Python program."""
-    imports = generate_imports(config)
+    imports = generate_imports(config, uses_multitask)
     setup = generate_setup_code(config)
+    routines_code = generate_routines_code(routines or [])
     main = generate_main_code(commands)
 
-    full = f"""{imports}
+    # Build full program
+    parts = [imports, '', setup]
 
-{setup}
+    if routines_code:
+        parts.extend(['', routines_code])
 
-# Main program
-{main}
-"""
+    parts.extend(['', '# Main program', main])
 
-    return GeneratedProgram(imports=imports, setup=setup, main=main, full=full)
+    full = '\n'.join(parts)
+
+    return GeneratedProgram(
+        imports=imports,
+        setup=setup,
+        routines=routines_code,
+        main=main,
+        full=full
+    )
 
 
-def generate_imports(config: RobotConfig) -> str:
+def generate_imports(config, uses_multitask: bool = False) -> str:
     """Generate import statements."""
     imports = [
         'from pybricks.hubs import PrimeHub',
         'from pybricks.pupdevices import Motor, ColorSensor, UltrasonicSensor, ForceSensor',
         'from pybricks.parameters import Port, Direction, Stop, Color',
         'from pybricks.robotics import DriveBase',
-        'from pybricks.tools import wait',
     ]
+
+    # Add wait and optionally multitask
+    if uses_multitask:
+        imports.append('from pybricks.tools import wait, multitask, run_task')
+    else:
+        imports.append('from pybricks.tools import wait')
 
     return '\n'.join(imports)
 
 
-def generate_setup_code(config: RobotConfig) -> str:
+def generate_routines_code(routines: List[RoutineDefinition]) -> str:
+    """Generate Python function definitions from routines."""
+    if not routines:
+        return ''
+
+    lines = ['# Routines/Functions']
+
+    for routine in routines:
+        # Function signature
+        params = ', '.join(routine.parameters) if routine.parameters else ''
+        lines.append(f'def {routine.name}({params}):')
+
+        # Parse routine body and indent
+        body_lines = routine.body.strip().split('\n')
+        if not body_lines or (len(body_lines) == 1 and not body_lines[0].strip()):
+            lines.append('    pass')
+        else:
+            for body_line in body_lines:
+                body_line = body_line.strip()
+                if body_line:
+                    # If body contains natural language, add as comment
+                    if body_line.startswith('#'):
+                        lines.append(f'    {body_line}')
+                    else:
+                        # Assume it's already Python or will be parsed
+                        lines.append(f'    {body_line}')
+
+        lines.append('')  # Blank line between functions
+
+    return '\n'.join(lines)
+
+
+def generate_setup_code(config: 'RobotConfig') -> str:
     """Generate hardware initialization code."""
     lines: List[str] = []
 

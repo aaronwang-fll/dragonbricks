@@ -17,6 +17,7 @@ from app.services.parser import (
     COMMAND_TEMPLATES, DISTANCE_COMPLETIONS, ANGLE_COMPLETIONS, DURATION_COMPLETIONS
 )
 from app.services.parser.parser import RobotConfig, ParseResult
+from app.services.parser.codegen import RoutineDefinition
 from app.api.llm import call_openai, call_anthropic
 from app.core.config import settings
 
@@ -122,10 +123,30 @@ async def parse_commands(
 ):
     """Parse natural language commands and generate Python code."""
     config = config_from_schema(request.config)
-    motor_names = [r.name for r in request.routines]
+
+    # Extract motor names (attachment1, attachment2, or custom names)
+    motor_names: List[str] = []
+    if config.attachment1_port:
+        motor_names.append('attachment1')
+    if config.attachment2_port:
+        motor_names.append('attachment2')
+
+    # Extract routine names for routine call parsing
+    routine_names = [r.name for r in request.routines]
+
+    # Convert routines to RoutineDefinition for code generation
+    routine_defs = [
+        RoutineDefinition(
+            name=r.name,
+            parameters=r.parameters,
+            body=r.body
+        )
+        for r in request.routines
+    ]
 
     results: List[ParsedCommandSchema] = []
     python_codes: List[str] = []
+    uses_multitask = False
 
     for command in request.commands:
         command = command.strip()
@@ -133,7 +154,7 @@ async def parse_commands(
             continue
 
         # Parse with rule-based parser
-        result = parse_command(command, config, motor_names)
+        result = parse_command(command, config, motor_names, routine_names)
 
         # Try LLM fallback if needed
         if result.needs_llm and not result.success:
@@ -145,9 +166,17 @@ async def parse_commands(
 
         if result.success and result.python_code:
             python_codes.append(result.python_code)
+            # Track if any command uses multitask
+            if result.command_type == 'multitask':
+                uses_multitask = True
 
-    # Generate full program
-    program = generate_full_program(config, python_codes)
+    # Generate full program with routines and multitask support
+    program = generate_full_program(
+        config,
+        python_codes,
+        routines=routine_defs if routine_defs else None,
+        uses_multitask=uses_multitask
+    )
 
     return ParseResponse(
         results=results,
