@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 
 
 class LLMParseRequest(BaseModel):
@@ -19,10 +19,10 @@ class LLMParseResponse(BaseModel):
 
 
 class LLMBatchParseRequest(BaseModel):
-    commands: list[str] = Field(..., min_items=1, max_items=50)
+    commands: List[str] = Field(..., min_length=1, max_length=50)
     context: Optional[str] = None
 
 
 class LLMBatchParseResponse(BaseModel):
-    results: list[LLMParseResponse]
+    results: List[LLMParseResponse]
     total_tokens: int = 0

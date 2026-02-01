@@ -1,3 +1,4 @@
+from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
@@ -48,7 +49,7 @@ def program_to_response(program: Program) -> ProgramResponse:
 
 async def check_program_access(
     program: Program,
-    user: User | None,
+    user: Optional[User],
     db: AsyncSession,
     require_edit: bool = False
 ) -> bool:
@@ -88,9 +89,9 @@ async def check_program_access(
     return False
 
 
-@router.get("", response_model=list[ProgramListResponse])
+@router.get("", response_model=List[ProgramListResponse])
 async def list_programs(
-    team_id: str | None = Query(None),
+    team_id: Optional[str] = Query(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -180,7 +181,7 @@ async def create_program(
 @router.get("/shared/{share_code}", response_model=ProgramResponse)
 async def get_program_by_share_code(
     share_code: str,
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db)
 ):
     """Get a program by its share code."""
@@ -200,7 +201,7 @@ async def get_program_by_share_code(
 @router.get("/{program_id}", response_model=ProgramResponse)
 async def get_program(
     program_id: str,
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db)
 ):
     """Get a program by ID."""
@@ -323,7 +324,7 @@ async def fork_program(
 
 
 # Sharing endpoints
-@router.get("/{program_id}/shares", response_model=list[ProgramShareResponse])
+@router.get("/{program_id}/shares", response_model=List[ProgramShareResponse])
 async def list_program_shares(
     program_id: str,
     current_user: User = Depends(get_current_user),
