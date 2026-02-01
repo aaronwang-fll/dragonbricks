@@ -259,7 +259,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
       </div>
 
       {/* Lines with inline Python */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto pt-1">
         {lines.map((line, index) => {
           const status = getLineStatus(index);
           const isExpanded = expandedLines.has(index);
