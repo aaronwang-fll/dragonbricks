@@ -272,13 +272,13 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
               {/* Main row - flex wrap for long content */}
               <div className="flex flex-wrap items-center">
                 {/* Line number */}
-                <span className="w-8 text-xs text-gray-600 text-right pr-1 flex-shrink-0 select-none border-r border-gray-700">
+                <span className="w-10 text-xs text-gray-600 text-right pr-4 flex-shrink-0 select-none border-r border-gray-700">
                   {index + 1}
                 </span>
 
                 {/* Status icon */}
                 <div
-                  className={`w-6 flex items-center justify-center flex-shrink-0 ${isClickable ? 'cursor-pointer hover:bg-yellow-900/30' : ''}`}
+                  className={`w-4 flex items-center justify-center flex-shrink-0 ${isClickable ? 'cursor-pointer hover:bg-yellow-900/30' : ''}`}
                   onClick={() => isClickable && handleLineClick(index)}
                   title={isClickable ? 'Click to provide missing value' : undefined}
                 >
@@ -293,7 +293,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                   onChange={(e) => handleLineChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   placeholder={index === 0 && !line ? 'Type command...' : ''}
-                  className="flex-1 bg-transparent text-sm font-mono text-white placeholder-gray-600 py-2 pl-1 pr-0 outline-none border-0 min-w-[100px]"
+                  className="flex-1 bg-transparent text-sm font-mono text-white placeholder-gray-600 py-2 pl-0 pr-0 outline-none border-0 min-w-[100px]"
                   spellCheck={false}
                 />
 
