@@ -497,7 +497,16 @@ def try_parse_repeat(tokens: List[Token], input_str: str) -> Optional[ParseResul
 
 
 def try_parse_sensor_wait(tokens: List[Token]) -> Optional[ParseResult]:
-    """Parse sensor wait commands."""
+    """Parse sensor wait commands.
+
+    Handles patterns like:
+    - "go forward until the light sensor detects black"
+    - "move until color sensor sees white"
+    - "wait until distance sensor < 100"
+
+    Pybricks Color reference: https://docs.pybricks.com/en/latest/parameters/color.html
+    Available colors: RED, ORANGE, YELLOW, GREEN, CYAN, BLUE, VIOLET, MAGENTA, WHITE, GRAY, BLACK, NONE
+    """
     has_until = has_token_type(tokens, 'until')
     has_while = has_token_type(tokens, 'while')
     has_sensor = has_token_type(tokens, 'sensor')
@@ -506,45 +515,101 @@ def try_parse_sensor_wait(tokens: List[Token]) -> Optional[ParseResult]:
     if (not has_until and not has_while) or (not has_sensor and not has_color):
         return None
 
+    # Check if there's a movement command before "until" (go forward until, move until, etc.)
+    has_move = has_verb(tokens, patterns.MOVE_VERBS)
+    direction = find_token_by_type(tokens, 'direction')
+    is_moving_command = has_move or (direction and direction.normalized in ['forward', 'backward'])
+
     sensor_token = find_token_by_type(tokens, 'sensor')
     color_token = find_token_by_type(tokens, 'color')
     comparison_token = find_token_by_type(tokens, 'comparison')
     number_token = find_token_by_type(tokens, 'number')
 
-    # "wait until color sensor sees black"
-    if color_token and has_sensor:
-        sensor_name = sensor_token.normalized if sensor_token else 'color_sensor'
+    # "go forward until color sensor sees black" or "wait until color sensor detects white"
+    if color_token:
         color_name = (color_token.normalized or '').upper()
-        return ParseResult(
-            success=True,
-            python_code=f'while {sensor_name}.color() != Color.{color_name}:\n    wait(10)',
-            confidence=0.85,
-            command_type='sensor'
-        )
 
-    # "wait until light sensor > 50"
+        # For black detection, using reflection() is more reliable (black reflects less light)
+        # But Color.BLACK is valid in Pybricks, so we use .color() for consistency
+        if is_moving_command:
+            # Robot should move while checking for the condition
+            speed = 200  # Default speed, could be configurable
+            if direction and direction.normalized == 'backward':
+                speed = -speed
+
+            code = f'''# Drive until color detected
+robot.drive({speed}, 0)
+while color_sensor.color() != Color.{color_name}:
+    wait(10)
+robot.stop()'''
+            return ParseResult(
+                success=True,
+                python_code=code,
+                confidence=0.9,
+                command_type='sensor_move'
+            )
+        else:
+            # Just wait in place for the condition
+            return ParseResult(
+                success=True,
+                python_code=f'''while color_sensor.color() != Color.{color_name}:
+    wait(10)''',
+                confidence=0.85,
+                command_type='sensor'
+            )
+
+    # "go forward until distance sensor < 100" or "wait until light sensor > 50"
     if sensor_token and number_token:
         sensor_name = sensor_token.normalized or 'sensor'
         comparison = comparison_token.normalized if comparison_token else '>'
         value = int(number_token.numeric_value or 50)
 
-        # Determine sensor method based on type
+        # Determine sensor method and variable name based on type
+        # Pybricks sensors: https://docs.pybricks.com/en/latest/pupdevices.html
+        sensor_var = 'sensor'
         sensor_method = 'reflection()'
-        if sensor_name in ['distance', 'ultrasonic']:
+
+        if sensor_name in ['light', 'color']:
+            sensor_var = 'color_sensor'
+            sensor_method = 'reflection()'
+        elif sensor_name in ['distance', 'ultrasonic']:
+            sensor_var = 'distance_sensor'
             sensor_method = 'distance()'
         elif sensor_name == 'force':
+            sensor_var = 'force_sensor'
             sensor_method = 'force()'
         elif sensor_name == 'gyro':
-            sensor_method = 'angle()'
+            sensor_var = 'hub.imu'
+            sensor_method = 'heading()'
 
+        # For "until", we wait while the opposite is true
+        # "until > 50" means "while <= 50"
         condition = comparison if has_while else ('<=' if comparison == '>' else '>=')
 
-        return ParseResult(
-            success=True,
-            python_code=f'while {sensor_name}.{sensor_method} {condition} {value}:\n    wait(10)',
-            confidence=0.85,
-            command_type='sensor'
-        )
+        if is_moving_command:
+            speed = 200
+            if direction and direction.normalized == 'backward':
+                speed = -speed
+
+            code = f'''# Drive until sensor condition met
+robot.drive({speed}, 0)
+while {sensor_var}.{sensor_method} {condition} {value}:
+    wait(10)
+robot.stop()'''
+            return ParseResult(
+                success=True,
+                python_code=code,
+                confidence=0.9,
+                command_type='sensor_move'
+            )
+        else:
+            return ParseResult(
+                success=True,
+                python_code=f'''while {sensor_var}.{sensor_method} {condition} {value}:
+    wait(10)''',
+                confidence=0.85,
+                command_type='sensor'
+            )
 
     return None
 

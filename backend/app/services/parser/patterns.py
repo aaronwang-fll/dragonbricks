@@ -1,5 +1,14 @@
 """
 Pattern definitions for natural language command parsing.
+
+Pybricks Reference Documentation:
+- Main docs: https://docs.pybricks.com/en/latest/
+- GitHub: https://github.com/pybricks/pybricks-micropython
+- Color constants: https://docs.pybricks.com/en/latest/parameters/color.html
+  Available: RED, ORANGE, YELLOW, GREEN, CYAN, BLUE, VIOLET, MAGENTA, WHITE, GRAY, BLACK, NONE
+- DriveBase: https://docs.pybricks.com/en/latest/robotics.html
+- ColorSensor: https://docs.pybricks.com/en/latest/pupdevices/colorsensor.html
+- Motors: https://docs.pybricks.com/en/latest/pupdevices/motor.html
 """
 
 from typing import Dict, List
@@ -84,7 +93,13 @@ TIME_CONVERSIONS: Dict[str, float] = {
 
 ANGLE_UNITS: List[str] = ['degree', 'degrees', 'deg']
 
-COLORS: List[str] = ['red', 'green', 'blue', 'yellow', 'white', 'black', 'orange', 'purple']
+# Pybricks Color constants (https://docs.pybricks.com/en/latest/parameters/color.html)
+# Saturated: RED, ORANGE, YELLOW, GREEN, CYAN, BLUE, VIOLET, MAGENTA
+# Unsaturated: WHITE, GRAY, BLACK, NONE
+COLORS: List[str] = [
+    'red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'violet', 'magenta',
+    'white', 'gray', 'grey', 'black', 'none'
+]
 
 # Speed-related words
 SPEED_WORDS: List[str] = ['speed', 'velocity', 'rate', 'fast', 'slow', 'quickly', 'slowly']

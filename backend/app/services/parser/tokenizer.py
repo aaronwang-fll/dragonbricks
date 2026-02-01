@@ -121,7 +121,11 @@ def classify_word(word: str) -> Token:
         return Token(type='unit', value=word, normalized=word)
 
     if word in patterns.COLORS:
-        return Token(type='color', value=word, normalized=word)
+        # Normalize color names to Pybricks constants
+        normalized_color = word
+        if word == 'grey':
+            normalized_color = 'gray'
+        return Token(type='color', value=word, normalized=normalized_color)
 
     if word in patterns.MOTOR_WORDS:
         return Token(type='motor', value=word, normalized=word)
