@@ -307,14 +307,14 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                 {/* Inline Python code (shown when expanded) */}
                 {hasCode && isExpanded && (
                   <>
-                    <div className="flex-1 text-xs font-mono text-gray-400 ml-4 py-2 min-w-0 truncate">
+                    <span className="text-xs font-mono text-gray-400 ml-4 py-2 whitespace-nowrap">
                       {pythonCode.split('\n').map((codeLine, i) => (
                         <span key={i} className={codeLine.startsWith('#') ? 'text-gray-500' : 'text-gray-400'}>
                           {codeLine}{i < pythonCode.split('\n').length - 1 ? ' | ' : ''}
                         </span>
                       ))}
-                    </div>
-                    {/* Collapse arrow at end */}
+                    </span>
+                    {/* Collapse arrow right after code */}
                     <button
                       onClick={() => toggleLine(index)}
                       className="px-1 h-8 flex items-center justify-center text-gray-500 hover:text-white hover:bg-gray-700 transition-colors flex-shrink-0"
@@ -322,6 +322,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                     >
                       <span className="text-xs">◀</span>
                     </button>
+                    <div className="flex-1" />
                   </>
                 )}
               </div>
