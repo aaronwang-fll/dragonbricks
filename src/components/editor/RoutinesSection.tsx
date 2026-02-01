@@ -9,11 +9,21 @@ export function RoutinesSection() {
   const [editingRoutine, setEditingRoutine] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const sectionRef = useRef<HTMLDivElement>(null);
+  const mainSectionRef = useRef<HTMLElement | null>(null);
 
-  // Scroll into view when routines section is expanded
+  // Find the main section element on mount
+  useEffect(() => {
+    mainSectionRef.current = document.querySelector('[data-main-section]');
+  }, []);
+
+  // Scroll when routines section is expanded/collapsed
   useEffect(() => {
     if (showRoutines && sectionRef.current) {
-      sectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // When expanded, scroll to show routines content (but not all the way to top)
+      sectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else if (!showRoutines && mainSectionRef.current) {
+      // When collapsed, scroll back to show main section
+      mainSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [showRoutines]);
 

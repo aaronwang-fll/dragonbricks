@@ -70,7 +70,10 @@ export function EditorPanel() {
       </details>
 
       {/* Main Section - inline Python per line */}
-      <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase px-3 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+      <div
+        data-main-section
+        className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase px-3 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700"
+      >
         Main
       </div>
       <MainSection onClarificationNeeded={handleClarificationNeeded} />
