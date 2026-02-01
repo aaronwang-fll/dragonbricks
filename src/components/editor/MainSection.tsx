@@ -272,7 +272,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
               {/* Main row - flex wrap for long content */}
               <div className="flex flex-wrap items-center">
                 {/* Line number */}
-                <span className="w-12 text-xs text-gray-600 text-right pr-6 flex-shrink-0 select-none border-r border-gray-700 mr-0">
+                <span className="w-10 text-xs text-gray-600 text-right pr-3 flex-shrink-0 select-none border-r border-gray-700">
                   {index + 1}
                 </span>
 
@@ -293,7 +293,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                   onChange={(e) => handleLineChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   placeholder={index === 0 && !line ? 'Type command...' : ''}
-                  className="flex-1 bg-transparent text-sm font-mono text-white placeholder-gray-600 py-2 pl-6 pr-0 outline-none border-0 min-w-[100px]"
+                  className="flex-1 bg-transparent text-sm font-mono text-white placeholder-gray-600 py-2 pl-3 pr-0 outline-none border-0 min-w-[100px]"
                   spellCheck={false}
                 />
 
