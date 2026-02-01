@@ -16,6 +16,12 @@ from app.schemas.program import (
 
 router = APIRouter()
 
+# Fields allowed for program update
+PROGRAM_UPDATE_ALLOWED_FIELDS = {
+    "name", "description", "team_id", "setup_section", "main_section",
+    "routines", "defaults", "generated_code", "is_public"
+}
+
 
 def program_to_response(program: Program) -> ProgramResponse:
     """Convert Program model to response."""
@@ -243,8 +249,10 @@ async def update_program(
         raise HTTPException(status_code=403, detail="Edit access required")
 
     update_data = program_data.model_dump(exclude_unset=True)
+    # Only update allowed fields to prevent privilege escalation
     for field, value in update_data.items():
-        setattr(program, field, value)
+        if field in PROGRAM_UPDATE_ALLOWED_FIELDS:
+            setattr(program, field, value)
 
     program.version += 1
     await db.commit()

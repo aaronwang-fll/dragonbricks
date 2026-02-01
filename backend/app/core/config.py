@@ -1,6 +1,11 @@
+import secrets
 from pydantic_settings import BaseSettings
 from typing import Optional, List
-import os
+
+
+def generate_secret_key() -> str:
+    """Generate a secure secret key for development."""
+    return secrets.token_urlsafe(32)
 
 
 class Settings(BaseSettings):
@@ -12,8 +17,8 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/dragonbricks"
 
-    # JWT Authentication
-    SECRET_KEY: str = "your-secret-key-change-in-production"
+    # JWT Authentication - MUST be set in production via environment variable
+    SECRET_KEY: str = generate_secret_key()
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 

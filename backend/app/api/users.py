@@ -14,6 +14,10 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
     return UserResponse.model_validate(current_user)
 
 
+# Fields allowed for user self-update
+USER_UPDATE_ALLOWED_FIELDS = {"email", "username", "full_name", "avatar_url", "settings"}
+
+
 @router.patch("/me", response_model=UserResponse)
 async def update_current_user(
     user_data: UserUpdate,
@@ -23,8 +27,10 @@ async def update_current_user(
     """Update current user profile."""
     update_data = user_data.model_dump(exclude_unset=True)
 
+    # Only update allowed fields to prevent privilege escalation
     for field, value in update_data.items():
-        setattr(current_user, field, value)
+        if field in USER_UPDATE_ALLOWED_FIELDS:
+            setattr(current_user, field, value)
 
     await db.commit()
     await db.refresh(current_user)

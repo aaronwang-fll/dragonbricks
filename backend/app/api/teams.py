@@ -14,6 +14,9 @@ from app.schemas.team import (
 
 router = APIRouter()
 
+# Fields allowed for team update
+TEAM_UPDATE_ALLOWED_FIELDS = {"name", "description", "avatar_url", "settings", "invite_enabled"}
+
 
 def team_to_response(team: Team) -> TeamResponse:
     """Convert Team model to response with member info."""
@@ -141,11 +144,20 @@ async def update_team(
         raise HTTPException(status_code=403, detail="Admin access required")
 
     update_data = team_data.model_dump(exclude_unset=True)
+    # Only update allowed fields to prevent privilege escalation
     for field, value in update_data.items():
-        setattr(team, field, value)
+        if field in TEAM_UPDATE_ALLOWED_FIELDS:
+            setattr(team, field, value)
 
     await db.commit()
-    await db.refresh(team)
+
+    # Reload with relationships (refresh doesn't load relationships)
+    result = await db.execute(
+        select(Team)
+        .where(Team.id == team_id)
+        .options(selectinload(Team.members).selectinload(TeamMember.user))
+    )
+    team = result.scalar_one()
 
     return team_to_response(team)
 
@@ -212,7 +224,10 @@ async def join_team(
     db.add(member)
     await db.commit()
 
-    # Reload
+    # Expire session cache to ensure fresh data
+    db.expire_all()
+
+    # Reload with fresh data
     result = await db.execute(
         select(Team)
         .where(Team.id == team_id)
