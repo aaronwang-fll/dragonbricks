@@ -16,7 +16,7 @@ function App() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-900">
+    <div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-900">
       <Header onSettingsClick={() => setCurrentPage('settings')} />
       <div className="flex-1 flex">
         <Sidebar />

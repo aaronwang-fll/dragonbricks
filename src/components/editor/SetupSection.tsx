@@ -26,7 +26,7 @@ export function SetupSection() {
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="px-2 py-1 border border-gray-600 rounded text-xs font-mono bg-gray-700 text-white min-w-[60px]"
+      className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs font-mono bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white min-w-[60px]"
     >
       {allowNone && <option value="None">{NONE_OPTION}</option>}
       {PORTS.map(p => (
@@ -41,7 +41,7 @@ export function SetupSection() {
     const name = config[nameKey as keyof typeof config];
 
     return (
-      <div className="flex items-center gap-2 p-2 bg-gray-700 rounded">
+      <div className="flex items-center gap-2 p-2 bg-gray-100 dark:bg-gray-700 rounded">
         {isEditing ? (
           <input
             type="text"
@@ -49,12 +49,12 @@ export function SetupSection() {
             onChange={(e) => updateConfig(nameKey, e.target.value)}
             onBlur={() => setEditingName(null)}
             onKeyDown={(e) => e.key === 'Enter' && setEditingName(null)}
-            className="flex-1 px-2 py-0.5 text-xs border border-blue-500 rounded bg-gray-600 text-white"
+            className="flex-1 px-2 py-0.5 text-xs border border-blue-500 rounded bg-white dark:bg-gray-600 text-gray-800 dark:text-white"
             autoFocus
           />
         ) : (
           <div className="flex-1 flex items-center gap-1 group/name">
-            <span className="text-xs font-medium text-gray-200 truncate">
+            <span className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate">
               {name}
             </span>
             <button
@@ -78,17 +78,17 @@ export function SetupSection() {
   };
 
   return (
-    <div className="p-3 bg-gray-800 h-full overflow-y-auto">
+    <div className="p-3 bg-white dark:bg-gray-800 h-full overflow-y-auto">
       {/* Drive Motors */}
       <div className="mb-3">
-        <h4 className="text-xs font-semibold text-gray-400 uppercase mb-2">Drive Motors</h4>
+        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">Drive Motors</h4>
         <div className="grid grid-cols-2 gap-2">
-          <div className="flex items-center justify-between p-2 bg-gray-700 rounded">
-            <span className="text-xs font-medium text-gray-200">Left Motor</span>
+          <div className="flex items-center justify-between p-2 bg-gray-100 dark:bg-gray-700 rounded">
+            <span className="text-xs font-medium text-gray-700 dark:text-gray-200">Left Motor</span>
             <PortSelect value={config.leftMotor} onChange={(v) => updateConfig('leftMotor', v)} />
           </div>
-          <div className="flex items-center justify-between p-2 bg-gray-700 rounded">
-            <span className="text-xs font-medium text-gray-200">Right Motor</span>
+          <div className="flex items-center justify-between p-2 bg-gray-100 dark:bg-gray-700 rounded">
+            <span className="text-xs font-medium text-gray-700 dark:text-gray-200">Right Motor</span>
             <PortSelect value={config.rightMotor} onChange={(v) => updateConfig('rightMotor', v)} />
           </div>
         </div>
@@ -96,7 +96,7 @@ export function SetupSection() {
 
       {/* Attachment Motors */}
       <div className="mb-3">
-        <h4 className="text-xs font-semibold text-gray-400 uppercase mb-2">Attachment Motors</h4>
+        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">Attachment Motors</h4>
         <div className="grid grid-cols-2 gap-2">
           <NameablePort portKey="attachment1" nameKey="attachment1Name" />
           <NameablePort portKey="attachment2" nameKey="attachment2Name" />
@@ -105,18 +105,18 @@ export function SetupSection() {
 
       {/* Sensors */}
       <div>
-        <h4 className="text-xs font-semibold text-gray-400 uppercase mb-2">Sensors</h4>
+        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">Sensors</h4>
         <div className="grid grid-cols-3 gap-2">
-          <div className="flex items-center justify-between p-2 bg-gray-700 rounded">
-            <span className="text-xs font-medium text-gray-200">Color</span>
+          <div className="flex items-center justify-between p-2 bg-gray-100 dark:bg-gray-700 rounded">
+            <span className="text-xs font-medium text-gray-700 dark:text-gray-200">Color</span>
             <PortSelect value={config.colorSensor} onChange={(v) => updateConfig('colorSensor', v)} allowNone />
           </div>
-          <div className="flex items-center justify-between p-2 bg-gray-700 rounded">
-            <span className="text-xs font-medium text-gray-200">Ultrasonic</span>
+          <div className="flex items-center justify-between p-2 bg-gray-100 dark:bg-gray-700 rounded">
+            <span className="text-xs font-medium text-gray-700 dark:text-gray-200">Ultrasonic</span>
             <PortSelect value={config.ultrasonicSensor} onChange={(v) => updateConfig('ultrasonicSensor', v)} allowNone />
           </div>
-          <div className="flex items-center justify-between p-2 bg-gray-700 rounded">
-            <span className="text-xs font-medium text-gray-200">Force</span>
+          <div className="flex items-center justify-between p-2 bg-gray-100 dark:bg-gray-700 rounded">
+            <span className="text-xs font-medium text-gray-700 dark:text-gray-200">Force</span>
             <PortSelect value={config.forceSensor} onChange={(v) => updateConfig('forceSensor', v)} allowNone />
           </div>
         </div>

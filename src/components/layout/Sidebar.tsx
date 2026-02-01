@@ -78,9 +78,9 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-48 bg-gray-800 border-r border-gray-700 flex flex-col overflow-visible z-10">
+    <aside className="w-48 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col overflow-visible z-10">
       {/* New button at top */}
-      <div className="p-3 border-b border-gray-700 flex-shrink-0">
+      <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <button
           onClick={handleNewFile}
           className="w-full px-3 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded flex items-center justify-center gap-2"
@@ -90,8 +90,8 @@ export function Sidebar() {
       </div>
 
       {/* Files header */}
-      <div className="px-3 py-2 bg-gray-900 flex-shrink-0">
-        <span className="text-xs font-semibold text-gray-400 uppercase">Programs ({programs.length})</span>
+      <div className="px-3 py-2 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
+        <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Programs ({programs.length})</span>
       </div>
 
       {/* File list */}
@@ -106,7 +106,7 @@ export function Sidebar() {
               key={program.id}
               onContextMenu={(e) => handleContextMenu(e, program.id)}
               className={`group relative ${
-                currentProgram?.id === program.id ? 'bg-blue-900/30' : 'hover:bg-gray-700'
+                currentProgram?.id === program.id ? 'bg-blue-100 dark:bg-blue-900/30' : 'hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
             >
               {editingId === program.id ? (
@@ -127,7 +127,7 @@ export function Sidebar() {
                   <button
                     onClick={() => setCurrentProgram(program)}
                     className={`flex-1 px-3 py-2 text-left text-sm truncate ${
-                      currentProgram?.id === program.id ? 'text-blue-400' : 'text-gray-300'
+                      currentProgram?.id === program.id ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'
                     }`}
                   >
                     {program.name}

@@ -197,9 +197,9 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
   const hasContent = lines.some(l => l.trim());
 
   return (
-    <div className="flex-1 flex flex-col bg-gray-900 overflow-hidden">
+    <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 overflow-hidden">
       {/* Header with expand all and export options */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-gray-800 border-b border-gray-700">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-3 text-xs text-gray-400">
           {hasContent && (
             <>
@@ -268,11 +268,11 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
           const isClickable = status === 'needs-clarification';
 
           return (
-            <div key={index} className="border-b border-gray-800">
+            <div key={index} className="border-b border-gray-100 dark:border-gray-800">
               {/* Main row - flex wrap for long content */}
               <div className="flex flex-wrap items-center">
                 {/* Line number */}
-                <span className="w-10 text-xs text-gray-600 text-right pr-4 flex-shrink-0 select-none border-r border-gray-700">
+                <span className="w-10 text-xs text-gray-400 dark:text-gray-600 text-right pr-4 flex-shrink-0 select-none border-r border-gray-200 dark:border-gray-700">
                   {index + 1}
                 </span>
 
@@ -293,7 +293,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                   onChange={(e) => handleLineChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   placeholder={index === 0 && !line ? 'Type command...' : ''}
-                  className="flex-1 bg-transparent text-sm font-mono text-white placeholder-gray-600 py-2 pl-0 pr-0 outline-none border-0 min-w-[100px]"
+                  className="flex-1 bg-transparent text-sm font-mono text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 py-2 pl-0 pr-0 outline-none border-0 min-w-[100px]"
                   spellCheck={false}
                 />
 

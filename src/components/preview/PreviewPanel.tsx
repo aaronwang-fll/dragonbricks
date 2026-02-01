@@ -247,7 +247,7 @@ export function PreviewPanel() {
   }
 
   return (
-    <aside style={{ width: panelWidth }} className="bg-gray-800 border-l border-gray-700 flex flex-col overflow-hidden">
+    <aside style={{ width: panelWidth }} className="bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-2 py-1.5 bg-gray-900 border-b border-gray-700">
         <span className="text-xs font-semibold text-gray-300 uppercase">Preview</span>
