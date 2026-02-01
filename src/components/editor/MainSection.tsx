@@ -271,9 +271,14 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
             <div key={index} className="border-b border-gray-800">
               {/* Main row - flex wrap for long content */}
               <div className="flex flex-wrap items-center">
+                {/* Line number */}
+                <span className="w-8 text-xs text-gray-600 text-right pr-2 flex-shrink-0 select-none">
+                  {index + 1}
+                </span>
+
                 {/* Status icon */}
                 <div
-                  className={`w-8 flex items-center justify-center flex-shrink-0 ${isClickable ? 'cursor-pointer hover:bg-yellow-900/30' : ''}`}
+                  className={`w-6 flex items-center justify-center flex-shrink-0 ${isClickable ? 'cursor-pointer hover:bg-yellow-900/30' : ''}`}
                   onClick={() => isClickable && handleLineClick(index)}
                   title={isClickable ? 'Click to provide missing value' : undefined}
                 >
