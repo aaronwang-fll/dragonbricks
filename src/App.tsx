@@ -8,7 +8,7 @@ function App() {
   return (
     <div className="h-screen flex flex-col bg-gray-900">
       <Header />
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex">
         <Sidebar />
         <main className="flex-1 flex">
           <EditorPanel />

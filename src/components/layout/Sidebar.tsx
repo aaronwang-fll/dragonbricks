@@ -78,7 +78,7 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-48 bg-gray-800 border-r border-gray-700 flex flex-col overflow-visible">
+    <aside className="w-48 bg-gray-800 border-r border-gray-700 flex flex-col overflow-visible z-10">
       {/* New button at top */}
       <div className="p-3 border-b border-gray-700 flex-shrink-0">
         <button
