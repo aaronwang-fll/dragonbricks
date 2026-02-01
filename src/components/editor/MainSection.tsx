@@ -224,7 +224,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
             <>
               <button
                 onClick={handleCopy}
-                className="p-1.5 text-gray-400 hover:text-white rounded hover:bg-gray-700 transition-colors"
+                className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                 title={copied ? 'Copied!' : 'Copy full Python code'}
               >
                 {copied ? (
@@ -239,7 +239,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
               </button>
               <button
                 onClick={handleDownload}
-                className="p-1.5 text-gray-400 hover:text-white rounded hover:bg-gray-700 transition-colors"
+                className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                 title="Download as .py file"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -249,7 +249,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
               <span className="text-gray-600">|</span>
               <button
                 onClick={toggleAll}
-                className="text-xs text-gray-400 hover:text-white px-2 py-0.5 rounded hover:bg-gray-700 transition-colors"
+                className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white px-2 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
               >
                 {allExpanded ? 'Collapse Python' : 'Expand Python'}
               </button>
@@ -301,7 +301,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                 {hasCode && !isExpanded && (
                   <button
                     onClick={() => toggleLine(index)}
-                    className="px-1 h-8 flex items-center justify-center text-gray-500 hover:text-white hover:bg-gray-700 transition-colors flex-shrink-0"
+                    className="px-1 h-8 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-800 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
                     title="Show Python"
                   >
                     <span className="text-xs">▶</span>
@@ -321,7 +321,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                     {/* Collapse arrow right after code */}
                     <button
                       onClick={() => toggleLine(index)}
-                      className="px-1 h-8 flex items-center justify-center text-gray-500 hover:text-white hover:bg-gray-700 transition-colors flex-shrink-0"
+                      className="px-1 h-8 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-800 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
                       title="Hide Python"
                     >
                       <span className="text-xs">◀</span>

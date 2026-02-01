@@ -236,7 +236,7 @@ export function PreviewPanel() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="w-8 bg-gray-800 hover:bg-gray-700 border-l border-gray-700 flex items-center justify-center group relative"
+        className="w-8 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 border-l border-gray-200 dark:border-gray-700 flex items-center justify-center group relative"
       >
         <span className="text-gray-400 text-xs">◀</span>
         <span className="absolute right-10 px-2 py-1 bg-gray-600 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
@@ -249,19 +249,19 @@ export function PreviewPanel() {
   return (
     <aside style={{ width: panelWidth }} className="bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-2 py-1.5 bg-gray-900 border-b border-gray-700">
+      <div className="flex items-center justify-between px-2 py-1.5 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
         <span className="text-xs font-semibold text-gray-300 uppercase">Preview</span>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="w-6 h-6 flex items-center justify-center hover:bg-gray-700 rounded text-gray-400 hover:text-gray-200"
+            className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
             title={isExpanded ? 'Collapse' : 'Expand'}
           >
             {isExpanded ? '▶' : '◀'}
           </button>
           <button
             onClick={() => setIsOpen(false)}
-            className="w-6 h-6 flex items-center justify-center hover:bg-gray-700 rounded text-gray-400 hover:text-gray-200"
+            className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
             title="Close"
           >
             ×
@@ -279,7 +279,7 @@ export function PreviewPanel() {
           ref={canvasRef}
           width={panelWidth - 16}
           height={canvasHeight}
-          className="w-full bg-gray-900 rounded border border-gray-700"
+          className="w-full bg-gray-100 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700"
         />
       </div>
 
@@ -299,7 +299,7 @@ export function PreviewPanel() {
               value={currentTime}
               onChange={(e) => setCurrentTime(Number(e.target.value))}
               onClick={(e) => e.stopPropagation()}
-              className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+              className="w-full h-1.5 bg-gray-300 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
             />
           </div>
         )}
@@ -309,14 +309,14 @@ export function PreviewPanel() {
           <button
             onClick={(e) => { e.stopPropagation(); setIsPlaying(!isPlaying); }}
             disabled={!calculatedPath || calculatedPath.totalTime === 0}
-            className="w-7 h-7 flex items-center justify-center bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 text-white text-sm rounded"
+            className="w-7 h-7 flex items-center justify-center bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white text-sm rounded"
             title={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? '⏸' : '▶'}
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); handleReset(); }}
-            className="w-7 h-7 flex items-center justify-center bg-gray-700 hover:bg-gray-600 text-sm rounded text-gray-200"
+            className="w-7 h-7 flex items-center justify-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-sm rounded text-gray-700 dark:text-gray-200"
             title="Reset"
           >
             ⟲
@@ -325,7 +325,7 @@ export function PreviewPanel() {
             value={playbackSpeed}
             onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
             onClick={(e) => e.stopPropagation()}
-            className="px-1 py-1 border border-gray-600 rounded text-[10px] bg-gray-700 text-white"
+            className="px-1 py-1 border border-gray-300 dark:border-gray-600 rounded text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white"
           >
             <option value={0.5}>0.5x</option>
             <option value={1}>1x</option>
@@ -335,7 +335,7 @@ export function PreviewPanel() {
           <div className="flex-1" />
           <button
             onClick={(e) => { e.stopPropagation(); handleLoadImage(); }}
-            className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-[10px] rounded text-gray-200"
+            className="px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-[10px] rounded text-gray-700 dark:text-gray-200"
           >
             {fieldImage ? 'Change Map' : 'Load Map'}
           </button>
