@@ -6,30 +6,35 @@ Natural language to Pybricks Python code converter for LEGO SPIKE Prime robots. 
 
 ```
 dragonbricks/
-├── src/                      # Frontend (React + TypeScript + Vite)
-│   ├── components/
-│   │   ├── layout/           # Header, Sidebar, StatusBar
-│   │   ├── editor/           # EditorPanel, MainSection, SetupSection, RoutinesSection
-│   │   ├── preview/          # PreviewPanel (path visualization)
-│   │   ├── settings/         # SettingsPage
-│   │   └── shared/           # ResizeHandle
-│   ├── stores/               # Zustand state management
-│   ├── hooks/                # Custom React hooks
-│   ├── lib/                  # Utilities
-│   │   ├── parser/           # Natural language parser
-│   │   ├── codegen/          # Python code generation
-│   │   ├── bluetooth/        # Web Bluetooth for SPIKE Prime
-│   │   ├── preview/          # Path calculation
-│   │   └── api.ts            # Backend API client
-│   └── types/                # TypeScript definitions
+├── frontend/                 # Frontend (React + TypeScript + Vite)
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── layout/       # Header, Sidebar, StatusBar
+│   │   │   ├── editor/       # EditorPanel, MainSection, SetupSection, RoutinesSection
+│   │   │   ├── preview/      # PreviewPanel (path visualization)
+│   │   │   ├── settings/     # SettingsPage
+│   │   │   └── shared/       # ResizeHandle
+│   │   ├── stores/           # Zustand state management
+│   │   ├── hooks/            # Custom React hooks
+│   │   ├── lib/              # Utilities
+│   │   │   ├── parser/       # Natural language parser
+│   │   │   ├── codegen/      # Python code generation
+│   │   │   ├── bluetooth/    # Web Bluetooth for SPIKE Prime
+│   │   │   ├── preview/      # Path calculation
+│   │   │   └── api.ts        # Backend API client
+│   │   └── types/            # TypeScript definitions
+│   ├── package.json
+│   └── vite.config.ts
 ├── backend/                  # Backend (Python + FastAPI)
-│   └── app/
-│       ├── api/              # REST endpoints
-│       ├── models/           # SQLAlchemy ORM models
-│       ├── schemas/          # Pydantic validation
-│       ├── core/             # Config, DB, security
-│       └── main.py           # FastAPI entry point
-└── docker-compose.yml        # Container orchestration
+│   ├── app/
+│   │   ├── api/              # REST endpoints
+│   │   ├── models/           # SQLAlchemy ORM models
+│   │   ├── schemas/          # Pydantic validation
+│   │   ├── core/             # Config, DB, security
+│   │   └── main.py           # FastAPI entry point
+│   ├── tests/                # pytest tests
+│   └── requirements.txt
+└── docs/                     # Documentation
 ```
 
 ## Tech Stack
@@ -60,6 +65,7 @@ dragonbricks/
 
 ```bash
 # Frontend
+cd frontend
 npm install
 npm run dev          # Start dev server (http://localhost:5173)
 npm run build        # Production build
@@ -143,6 +149,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 ```bash
 # Frontend tests
+cd frontend
 npm run test
 
 # Backend tests
