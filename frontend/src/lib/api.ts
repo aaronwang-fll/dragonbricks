@@ -191,7 +191,7 @@ class ApiClient {
     });
   }
 
-  // LLM parsing
+  // LLM parsing (legacy - use parseCommands instead)
   async parseWithLLM(command: string, context?: string) {
     return this.request<LLMParseResult>('/llm/parse', {
       method: 'POST',
@@ -203,6 +203,28 @@ class ApiClient {
     return this.request<{ results: LLMParseResult[]; total_tokens: number }>('/llm/parse/batch', {
       method: 'POST',
       body: JSON.stringify({ commands, context }),
+    });
+  }
+
+  // Parser endpoints (new - backend handles all parsing)
+  async parseCommands(commands: string[], config: RobotConfig, routines: RoutineInput[] = []) {
+    return this.request<ParseResponse>('/parser/parse', {
+      method: 'POST',
+      body: JSON.stringify({ commands, config, routines }),
+    });
+  }
+
+  async getAutocompleteSuggestions(text: string, cursorPosition: number) {
+    return this.request<AutocompleteResponse>('/parser/autocomplete', {
+      method: 'POST',
+      body: JSON.stringify({ text, cursor_position: cursorPosition }),
+    });
+  }
+
+  async validateCommand(command: string) {
+    return this.request<ValidateResponse>('/parser/validate', {
+      method: 'POST',
+      body: JSON.stringify({ command }),
     });
   }
 }
@@ -328,6 +350,69 @@ export interface LLMParseResult {
   provider: string;
   model: string;
   tokens_used?: number;
+}
+
+// Parser types (new backend parser)
+export interface RobotConfig {
+  left_motor_port: string;
+  right_motor_port: string;
+  wheel_diameter: number;
+  axle_track: number;
+  speed: number;
+  acceleration: number;
+  turn_rate: number;
+  turn_acceleration: number;
+  motor_speed: number;
+  attachment1_port?: string;
+  attachment2_port?: string;
+  color_sensor_port?: string;
+  ultrasonic_port?: string;
+  force_port?: string;
+}
+
+export interface RoutineInput {
+  name: string;
+  parameters: string[];
+  body: string;
+}
+
+export interface ClarificationRequest {
+  field: string;
+  message: string;
+  type: 'distance' | 'angle' | 'duration';
+}
+
+export interface ParsedCommand {
+  original: string;
+  python_code?: string;
+  status: 'parsed' | 'error' | 'needs_clarification' | 'needs_llm';
+  error?: string;
+  clarification?: ClarificationRequest;
+  command_type?: string;
+  confidence: number;
+}
+
+export interface ParseResponse {
+  results: ParsedCommand[];
+  generated_code: string;
+  imports: string;
+  setup: string;
+}
+
+export interface Suggestion {
+  text: string;
+  label: string;
+  category: string;
+}
+
+export interface AutocompleteResponse {
+  suggestions: Suggestion[];
+}
+
+export interface ValidateResponse {
+  valid: boolean;
+  error?: string;
+  needs_clarification?: ClarificationRequest;
 }
 
 // Export singleton instance

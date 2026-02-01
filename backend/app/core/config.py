@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = None
     ANTHROPIC_API_KEY: Optional[str] = None
     DEFAULT_LLM_PROVIDER: str = "openai"  # or "anthropic"
-    DEFAULT_LLM_MODEL: str = "gpt-4o-mini"
+    DEFAULT_LLM_MODEL: str = "gpt-5-mini"
 
     # Rate limiting
     RATE_LIMIT_PER_MINUTE: int = 60

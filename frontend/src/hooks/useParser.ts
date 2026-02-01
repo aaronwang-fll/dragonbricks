@@ -1,146 +1,102 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useEditorStore } from '../stores/editorStore';
-import { parseCommand } from '../lib/parser';
-import { extractRoutines, isRoutineCall, generateRoutineCall } from '../lib/parser/routines';
-import { parsewithLLM } from '../lib/parser/llmParser';
+import { api, RobotConfig } from '../lib/api';
 import type { ParsedCommand, Routine } from '../types';
 
 export function useParser() {
-  const { defaults, setCommands, updateCommand, currentProgram, updateProgram, llmConfig } = useEditorStore();
+  const { defaults, setCommands, updateCommand, currentProgram, updateProgram } = useEditorStore();
+  const [isLoading, setIsLoading] = useState(false);
+  const [generatedCode, setGeneratedCode] = useState('');
 
-  const parseInput = useCallback((input: string): ParsedCommand[] => {
-    // First, extract routine definitions from the input
-    const { routines: parsedRoutines, mainCode } = extractRoutines(input, defaults);
+  // Convert frontend defaults to backend RobotConfig
+  const getConfig = useCallback((): RobotConfig => ({
+    left_motor_port: defaults.leftMotorPort || 'A',
+    right_motor_port: defaults.rightMotorPort || 'B',
+    wheel_diameter: defaults.wheelDiameter || 56,
+    axle_track: defaults.axleTrack || 112,
+    speed: defaults.speed || 200,
+    acceleration: defaults.acceleration || 700,
+    turn_rate: defaults.turnRate || 150,
+    turn_acceleration: defaults.turnAcceleration || 300,
+    motor_speed: defaults.motorSpeed || 200,
+    attachment1_port: defaults.attachment1Port !== 'None' ? defaults.attachment1Port : undefined,
+    attachment2_port: defaults.attachment2Port !== 'None' ? defaults.attachment2Port : undefined,
+    color_sensor_port: defaults.colorSensorPort !== 'None' ? defaults.colorSensorPort : undefined,
+    ultrasonic_port: defaults.ultrasonicPort !== 'None' ? defaults.ultrasonicPort : undefined,
+    force_port: defaults.forcePort !== 'None' ? defaults.forcePort : undefined,
+  }), [defaults]);
 
-    // Get existing routine names for routine call detection
-    const existingRoutines = currentProgram?.routines || [];
-    const routineNames = [
-      ...existingRoutines.map(r => r.name),
-      ...parsedRoutines.map(r => r.routine.name),
-    ];
+  const parseInput = useCallback(async (input: string): Promise<ParsedCommand[]> => {
+    const lines = input.split('\n').filter(line => line.trim());
 
-    // If we found new routine definitions, save them
-    if (parsedRoutines.length > 0 && currentProgram) {
-      const newRoutines: Routine[] = parsedRoutines.map(pr => pr.routine);
-      // Merge with existing, avoiding duplicates by name
-      const mergedRoutines = [...existingRoutines];
-      for (const newRoutine of newRoutines) {
-        const existingIdx = mergedRoutines.findIndex(r => r.name === newRoutine.name);
-        if (existingIdx >= 0) {
-          mergedRoutines[existingIdx] = newRoutine;
-        } else {
-          mergedRoutines.push(newRoutine);
-        }
-      }
-      updateProgram(currentProgram.id, { routines: mergedRoutines });
+    if (lines.length === 0) {
+      setCommands([]);
+      setGeneratedCode('');
+      return [];
     }
 
-    // Parse the main code (non-routine lines)
-    const commands: ParsedCommand[] = mainCode.map((line, index) => {
-      // First check if this is a routine call
-      const routineCheck = isRoutineCall(line, routineNames);
-      if (routineCheck.isCall && routineCheck.routineName) {
-        const args: Record<string, string | number> = {};
-        if (routineCheck.args) {
-          routineCheck.args.forEach((arg, i) => {
-            args[`arg${i}`] = arg;
-          });
-        }
-        const pythonCode = generateRoutineCall(routineCheck.routineName, args);
-        return {
-          id: `cmd-${index}-${Date.now()}`,
-          naturalLanguage: line,
-          pythonCode,
-          status: 'parsed' as const,
-        };
-      }
-
-      // Otherwise parse as regular command
-      const result = parseCommand(line, defaults);
-
-      return {
-        id: `cmd-${index}-${Date.now()}`,
-        naturalLanguage: line,
-        pythonCode: result.pythonCode || null,
-        status: result.success
-          ? 'parsed'
-          : result.needsClarification
-            ? 'needs-clarification'
-            : 'error',
-        clarification: result.needsClarification,
-        error: result.error,
-      };
-    });
-
-    setCommands(commands);
-    return commands;
-  }, [defaults, setCommands, currentProgram, updateProgram]);
-
-  const parseSingleCommand = useCallback((input: string): ParsedCommand => {
-    const result = parseCommand(input, defaults);
-
-    return {
-      id: `cmd-${Date.now()}`,
-      naturalLanguage: input,
-      pythonCode: result.pythonCode || null,
-      status: result.success
-        ? 'parsed'
-        : result.needsClarification
-          ? 'needs-clarification'
-          : 'error',
-      clarification: result.needsClarification,
-      error: result.error,
-    };
-  }, [defaults]);
-
-  // Parse with LLM fallback for complex commands
-  const parseWithLLMFallback = useCallback(async (
-    commandId: string,
-    input: string
-  ): Promise<void> => {
-    if (!llmConfig.enabled || !llmConfig.apiKey) {
-      return;
-    }
-
-    // Update status to show we're processing
-    updateCommand(commandId, {
-      status: 'pending',
-      error: 'Processing with AI...',
-    });
+    setIsLoading(true);
 
     try {
-      const result = await parsewithLLM(input, {
-        provider: llmConfig.provider === 'none' ? 'openai' : llmConfig.provider,
-        apiKey: llmConfig.apiKey,
-        model: llmConfig.model,
-      });
+      const config = getConfig();
+      const routines = currentProgram?.routines?.map(r => ({
+        name: r.name,
+        parameters: r.parameters,
+        body: r.body,
+      })) || [];
 
-      if (result.success && result.pythonCode) {
-        updateCommand(commandId, {
-          pythonCode: result.pythonCode,
-          status: 'parsed',
-          error: undefined,
-        });
-      } else {
-        updateCommand(commandId, {
-          status: 'error',
-          error: result.error || 'AI parsing failed',
-        });
-      }
+      const response = await api.parseCommands(lines, config, routines);
+
+      const commands: ParsedCommand[] = response.results.map((result, index) => ({
+        id: `cmd-${index}-${Date.now()}`,
+        naturalLanguage: result.original,
+        pythonCode: result.python_code || null,
+        status: result.status === 'parsed' ? 'parsed' :
+                result.status === 'needs_clarification' ? 'needs-clarification' :
+                result.status === 'needs_llm' ? 'pending' : 'error',
+        clarification: result.clarification,
+        error: result.error,
+      }));
+
+      setCommands(commands);
+      setGeneratedCode(response.generated_code);
+      return commands;
     } catch (error) {
-      updateCommand(commandId, {
-        status: 'error',
-        error: error instanceof Error ? error.message : 'AI parsing failed',
-      });
+      // Fallback: mark all commands as errors
+      const commands: ParsedCommand[] = lines.map((line, index) => ({
+        id: `cmd-${index}-${Date.now()}`,
+        naturalLanguage: line,
+        pythonCode: null,
+        status: 'error' as const,
+        error: error instanceof Error ? error.message : 'Parsing failed',
+      }));
+      setCommands(commands);
+      return commands;
+    } finally {
+      setIsLoading(false);
     }
-  }, [llmConfig, updateCommand]);
+  }, [getConfig, setCommands, currentProgram]);
 
-  // Check if a command can benefit from LLM parsing
-  const canUseLLM = useCallback((): boolean => {
-    return llmConfig.enabled && !!llmConfig.apiKey && llmConfig.provider !== 'none';
-  }, [llmConfig]);
+  // Synchronous version for compatibility - just returns pending status
+  const parseInputSync = useCallback((input: string): ParsedCommand[] => {
+    const lines = input.split('\n').filter(line => line.trim());
 
-  const resolveClarification = useCallback((
+    const commands: ParsedCommand[] = lines.map((line, index) => ({
+      id: `cmd-${index}-${Date.now()}`,
+      naturalLanguage: line,
+      pythonCode: null,
+      status: 'pending' as const,
+    }));
+
+    setCommands(commands);
+
+    // Trigger async parse
+    parseInput(input);
+
+    return commands;
+  }, [setCommands, parseInput]);
+
+  const resolveClarification = useCallback(async (
     commandId: string,
     field: string,
     value: string
@@ -150,7 +106,7 @@ export function useParser() {
 
     if (!command) return;
 
-    // Append the clarified value to the original command and re-parse
+    // Append the clarified value to the original command
     let updatedInput = command.naturalLanguage;
 
     if (field === 'distance') {
@@ -161,33 +117,39 @@ export function useParser() {
       updatedInput = `${updatedInput} ${value} seconds`;
     }
 
-    const result = parseCommand(updatedInput, defaults);
+    // Re-parse with updated input
+    try {
+      const config = getConfig();
+      const response = await api.parseCommands([updatedInput], config, []);
+      const result = response.results[0];
 
-    updateCommand(commandId, {
-      naturalLanguage: updatedInput,
-      pythonCode: result.pythonCode || null,
-      status: result.success ? 'parsed' : 'error',
-      clarification: undefined,
-      error: result.error,
-    });
-  }, [defaults, updateCommand]);
+      if (result) {
+        updateCommand(commandId, {
+          naturalLanguage: updatedInput,
+          pythonCode: result.python_code || null,
+          status: result.status === 'parsed' ? 'parsed' : 'error',
+          clarification: undefined,
+          error: result.error,
+        });
+      }
+    } catch (error) {
+      updateCommand(commandId, {
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Parsing failed',
+      });
+    }
+  }, [getConfig, updateCommand]);
 
   const generateFullProgram = useCallback((): string => {
-    const { commands } = useEditorStore.getState();
-
-    const pythonLines = commands
-      .filter(cmd => cmd.status === 'parsed' && cmd.pythonCode)
-      .map(cmd => cmd.pythonCode);
-
-    return pythonLines.join('\n');
-  }, []);
+    return generatedCode;
+  }, [generatedCode]);
 
   return {
-    parseInput,
-    parseSingleCommand,
+    parseInput: parseInputSync, // Use sync version for backward compatibility
+    parseInputAsync: parseInput,
     resolveClarification,
     generateFullProgram,
-    parseWithLLMFallback,
-    canUseLLM,
+    isLoading,
+    generatedCode,
   };
 }
