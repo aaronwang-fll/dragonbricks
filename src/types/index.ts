@@ -77,6 +77,14 @@ export interface Defaults {
   axleTrack: number;
   motorSpeed: number;
   lineThreshold: number;
+  // Port configuration
+  leftMotorPort: string;
+  rightMotorPort: string;
+  attachment1Port: string;
+  attachment2Port: string;
+  colorSensorPort: string;
+  ultrasonicPort: string;
+  forcePort: string;
 }
 
 export const DEFAULT_VALUES: Defaults = {
@@ -89,4 +97,12 @@ export const DEFAULT_VALUES: Defaults = {
   axleTrack: 112,
   motorSpeed: 200,
   lineThreshold: 50,
+  // Port defaults
+  leftMotorPort: 'A',
+  rightMotorPort: 'B',
+  attachment1Port: 'None',
+  attachment2Port: 'None',
+  colorSensorPort: 'C',
+  ultrasonicPort: 'D',
+  forcePort: 'None',
 };

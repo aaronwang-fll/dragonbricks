@@ -1,13 +1,13 @@
-import { useState } from 'react';
 import { useConnectionStore } from '../../stores/connectionStore';
 import { useBluetooth } from '../../hooks/useBluetooth';
-import { useThemeStore } from '../../stores/themeStore';
 
-export function Header() {
+interface HeaderProps {
+  onSettingsClick: () => void;
+}
+
+export function Header({ onSettingsClick }: HeaderProps) {
   const { status, programStatus } = useConnectionStore();
   const { isSupported, connect, disconnect, run, stop } = useBluetooth();
-  const { mode, setMode } = useThemeStore();
-  const [showSettings, setShowSettings] = useState(false);
 
   const isConnected = status === 'connected';
   const isConnecting = status === 'connecting';
@@ -25,21 +25,6 @@ export function Header() {
     connecting: { dot: 'bg-yellow-500 animate-pulse' },
     connected: { dot: 'bg-green-500' },
     error: { dot: 'bg-red-500' },
-  };
-
-  const cycleTheme = () => {
-    const modes: Array<'light' | 'dark' | 'system'> = ['light', 'dark', 'system'];
-    const currentIndex = modes.indexOf(mode);
-    const nextIndex = (currentIndex + 1) % modes.length;
-    setMode(modes[nextIndex]);
-  };
-
-  const getThemeIcon = () => {
-    switch (mode) {
-      case 'light': return '☀️';
-      case 'dark': return '🌙';
-      case 'system': return '💻';
-    }
   };
 
   const handleRun = async () => {
@@ -112,17 +97,7 @@ export function Header() {
         </button>
 
         <button
-          onClick={cycleTheme}
-          className="w-10 h-10 flex items-center justify-center hover:bg-gray-700 rounded-lg transition-colors group relative"
-          aria-label="Toggle theme"
-        >
-          <span className="text-lg">{getThemeIcon()}</span>
-          <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-600 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-            {mode === 'light' ? 'Light' : mode === 'dark' ? 'Dark' : 'System'}
-          </span>
-        </button>
-        <button
-          onClick={() => setShowSettings(!showSettings)}
+          onClick={onSettingsClick}
           className="w-10 h-10 flex items-center justify-center hover:bg-gray-700 rounded-lg transition-colors group relative"
           aria-label="Settings"
         >
@@ -135,59 +110,6 @@ export function Header() {
           </span>
         </button>
       </div>
-
-      {/* Settings panel */}
-      {showSettings && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setShowSettings(false)}
-          />
-          <div className="absolute top-14 right-4 z-50 bg-gray-800 rounded-lg shadow-xl border border-gray-700 w-72 p-4">
-            <h3 className="font-semibold text-white mb-3">Settings</h3>
-            <div className="space-y-3 text-sm">
-              <div>
-                <label className="block text-gray-300 mb-1">Default Speed (mm/s)</label>
-                <input
-                  type="number"
-                  defaultValue={200}
-                  className="w-full px-2 py-1 border border-gray-600 rounded bg-gray-700 text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-300 mb-1">Default Turn Rate (deg/s)</label>
-                <input
-                  type="number"
-                  defaultValue={150}
-                  className="w-full px-2 py-1 border border-gray-600 rounded bg-gray-700 text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-300 mb-1">Wheel Diameter (mm)</label>
-                <input
-                  type="number"
-                  defaultValue={56}
-                  className="w-full px-2 py-1 border border-gray-600 rounded bg-gray-700 text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-300 mb-1">Axle Track (mm)</label>
-                <input
-                  type="number"
-                  defaultValue={112}
-                  className="w-full px-2 py-1 border border-gray-600 rounded bg-gray-700 text-white"
-                />
-              </div>
-            </div>
-            <button
-              onClick={() => setShowSettings(false)}
-              className="mt-4 w-full py-2 bg-blue-500 hover:bg-blue-600 text-white rounded"
-            >
-              Save
-            </button>
-          </div>
-        </>
-      )}
     </header>
   );
 }

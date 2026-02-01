@@ -52,6 +52,7 @@ interface EditorState {
   setShowPythonPanel: (show: boolean) => void;
   setPythonPanelWidth: (width: number) => void;
 
+  setDefaults: (defaults: Defaults) => void;
   updateDefaults: (updates: Partial<Defaults>) => void;
 }
 
@@ -119,6 +120,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   setShowPythonPanel: (show) => set({ showPythonPanel: show }),
   setPythonPanelWidth: (width) => set({ pythonPanelWidth: width }),
 
+  setDefaults: (defaults) => set({ defaults }),
   updateDefaults: (updates) => set((state) => ({
     defaults: { ...state.defaults, ...updates },
   })),
