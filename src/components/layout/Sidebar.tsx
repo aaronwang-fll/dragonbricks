@@ -78,9 +78,9 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-48 bg-gray-800 border-r border-gray-700 flex flex-col">
+    <aside className="w-48 bg-gray-800 border-r border-gray-700 flex flex-col overflow-hidden">
       {/* New button at top */}
-      <div className="p-2 border-b border-gray-700">
+      <div className="p-3 border-b border-gray-700 flex-shrink-0">
         <button
           onClick={handleNewFile}
           className="w-full px-3 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded flex items-center justify-center gap-2"
@@ -90,7 +90,7 @@ export function Sidebar() {
       </div>
 
       {/* Files header */}
-      <div className="px-3 py-2 bg-gray-900">
+      <div className="px-3 py-2 bg-gray-900 flex-shrink-0">
         <span className="text-xs font-semibold text-gray-400 uppercase">Programs ({programs.length})</span>
       </div>
 
