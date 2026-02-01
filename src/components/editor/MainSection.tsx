@@ -289,7 +289,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   placeholder={index === 0 && !line ? 'Type a command... (e.g., move forward 200mm)' : ''}
                   style={isExpanded && line ? { width: `${line.length + 1}ch` } : undefined}
-                  className={`bg-transparent text-sm font-mono text-white placeholder-gray-600 py-2 px-2 outline-none border-0 ${isExpanded ? 'flex-shrink-0' : 'flex-1'}`}
+                  className={`bg-transparent text-sm font-mono text-white placeholder-gray-600 py-2 pl-2 pr-0 outline-none border-0 ${isExpanded ? 'flex-shrink-0' : 'flex-1'}`}
                   spellCheck={false}
                 />
 
@@ -307,7 +307,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                 {/* Inline Python code (shown when expanded) */}
                 {hasCode && isExpanded && (
                   <>
-                    <div className="flex-1 text-xs font-mono text-gray-400 px-2 py-2 min-w-0 truncate">
+                    <div className="flex-1 text-xs font-mono text-gray-400 pl-1 py-2 min-w-0 truncate">
                       {pythonCode.split('\n').map((codeLine, i) => (
                         <span key={i} className={codeLine.startsWith('#') ? 'text-gray-500' : 'text-gray-400'}>
                           {codeLine}{i < pythonCode.split('\n').length - 1 ? ' | ' : ''}
