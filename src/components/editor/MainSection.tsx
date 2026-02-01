@@ -287,9 +287,8 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                   value={line}
                   onChange={(e) => handleLineChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
-                  placeholder={index === 0 && !line ? 'Type a command... (e.g., move forward 200mm)' : ''}
-                  style={{ width: line ? `${Math.min(line.length + 1, 50)}ch` : '300px' }}
-                  className="bg-transparent text-sm font-mono text-white placeholder-gray-600 py-2 pl-2 pr-0 outline-none border-0 flex-shrink min-w-[100px]"
+                  placeholder={index === 0 && !line ? 'Type command...' : ''}
+                  className="flex-1 bg-transparent text-sm font-mono text-white placeholder-gray-600 py-2 pl-2 pr-0 outline-none border-0 min-w-[100px]"
                   spellCheck={false}
                 />
 
