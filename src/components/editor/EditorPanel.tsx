@@ -80,7 +80,10 @@ export function EditorPanel() {
 
       <ResizeHandle direction="vertical" onResize={handleRoutinesResize} />
 
-      <div style={{ minHeight: showRoutines ? 200 : 50, maxHeight: showRoutines ? 400 : 50 }}>
+      <div
+        className="transition-all duration-300 ease-in-out"
+        style={{ minHeight: showRoutines ? 200 : 50, maxHeight: showRoutines ? 400 : 50 }}
+      >
         <RoutinesSection />
       </div>
 

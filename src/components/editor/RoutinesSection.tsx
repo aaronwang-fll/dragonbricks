@@ -16,15 +16,19 @@ export function RoutinesSection() {
     mainSectionRef.current = document.querySelector('[data-main-section]');
   }, []);
 
-  // Scroll when routines section is expanded/collapsed
+  // Scroll when routines section is expanded/collapsed (with delay for animation)
   useEffect(() => {
-    if (showRoutines && sectionRef.current) {
-      // When expanded, scroll to show routines content (but not all the way to top)
-      sectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    } else if (!showRoutines && mainSectionRef.current) {
-      // When collapsed, scroll back to show main section
-      mainSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    const timer = setTimeout(() => {
+      if (showRoutines && sectionRef.current) {
+        // When expanded, scroll to show routines content (but not all the way to top)
+        sectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else if (!showRoutines && mainSectionRef.current) {
+        // When collapsed, scroll back to show main section
+        mainSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 150); // Delay to sync with height transition
+
+    return () => clearTimeout(timer);
   }, [showRoutines]);
 
   const handleAddRoutine = useCallback(() => {
