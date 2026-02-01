@@ -307,7 +307,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                 {/* Inline Python code (shown when expanded) */}
                 {hasCode && isExpanded && (
                   <>
-                    <div className="flex-1 text-xs font-mono text-gray-400 py-2 min-w-0 truncate">
+                    <div className="flex-1 text-xs font-mono text-gray-400 ml-4 py-2 min-w-0 truncate">
                       {pythonCode.split('\n').map((codeLine, i) => (
                         <span key={i} className={codeLine.startsWith('#') ? 'text-gray-500' : 'text-gray-400'}>
                           {codeLine}{i < pythonCode.split('\n').length - 1 ? ' | ' : ''}
