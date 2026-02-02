@@ -50,6 +50,15 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
     }
   }, [lines, currentProgram?.id]);
 
+  // Auto-add empty line at the end when last line has content
+  useEffect(() => {
+    if (lines.length === 0) return;
+    const lastLine = lines[lines.length - 1];
+    if (lastLine && lastLine.trim() !== '') {
+      setLines(prev => [...prev, '']);
+    }
+  }, [lines]);
+
   // Parse all lines with debounce
   useEffect(() => {
     if (debounceRef.current) {
