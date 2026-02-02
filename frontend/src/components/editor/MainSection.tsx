@@ -397,13 +397,25 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                 {/* Inline Python code (shown when expanded) */}
                 {hasCode && isExpanded && (
                   <>
-                    <span className="text-xs font-mono text-gray-400 ml-4 py-2">
-                      {pythonCode.split('\n').map((codeLine, i) => (
-                        <span key={i} className={codeLine.startsWith('#') ? 'text-gray-500' : 'text-gray-400'}>
-                          {codeLine}{i < pythonCode.split('\n').length - 1 ? ' | ' : ''}
-                        </span>
-                      ))}
-                    </span>
+                    {pythonCode.split('\n').length <= 2 ? (
+                      // Short code: show inline with | separator
+                      <span className="text-xs font-mono text-gray-400 ml-4 py-2 truncate max-w-md">
+                        {pythonCode.split('\n').map((codeLine, i) => (
+                          <span key={i} className={codeLine.startsWith('#') ? 'text-gray-500' : 'text-gray-400'}>
+                            {codeLine}{i < pythonCode.split('\n').length - 1 ? ' | ' : ''}
+                          </span>
+                        ))}
+                      </span>
+                    ) : (
+                      // Long code: show as code block below
+                      <pre className="text-xs font-mono text-gray-400 ml-4 py-1 px-2 bg-gray-800 rounded max-w-lg overflow-x-auto whitespace-pre">
+                        {pythonCode.split('\n').map((codeLine, i) => (
+                          <div key={i} className={codeLine.startsWith('#') ? 'text-gray-500' : 'text-gray-400'}>
+                            {codeLine}
+                          </div>
+                        ))}
+                      </pre>
+                    )}
                     {/* Collapse arrow right after code */}
                     <button
                       onClick={() => toggleLine(index)}
