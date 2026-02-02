@@ -29,8 +29,8 @@ const TUTORIAL_EXAMPLES = {
     { name: 'Parallel task', command: 'move forward 200mm while running motor 180 degrees' },
   ],
   'Routines': [
-    { name: 'Define routine', command: '# Define in Routines section:\n# Name: grab_object\n# Body: run motor 90 degrees' },
     { name: 'Call routine', command: 'run grab_object' },
+    { name: 'Call routine 3 times', command: 'repeat 3 times: run grab_object' },
   ],
 };
 
@@ -111,9 +111,16 @@ export function Sidebar() {
     setContextMenu({ id, x: e.clientX, y: e.clientY });
   };
 
-  const handleCopyExample = (command: string) => {
-    navigator.clipboard.writeText(command);
-    // Could add a toast notification here
+  const handleInsertExample = (command: string) => {
+    if (!currentProgram) return;
+
+    // Append the command to the mainSection (on a new line if there's existing content)
+    const currentContent = currentProgram.mainSection || '';
+    const newContent = currentContent
+      ? `${currentContent}\n${command}`
+      : command;
+
+    updateProgram(currentProgram.id, { mainSection: newContent });
   };
 
   return (
@@ -245,9 +252,9 @@ export function Sidebar() {
                     {examples.map((example, idx) => (
                       <button
                         key={idx}
-                        onClick={() => handleCopyExample(example.command)}
+                        onClick={() => handleInsertExample(example.command)}
                         className="w-full px-4 py-1 text-left text-xs text-gray-600 dark:text-gray-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 truncate"
-                        title={`Click to copy: ${example.command}`}
+                        title={`Click to insert: ${example.command}`}
                       >
                         {example.name}
                       </button>
@@ -257,7 +264,7 @@ export function Sidebar() {
               </div>
             ))}
             <div className="px-3 py-2 text-[10px] text-gray-400 dark:text-gray-500 text-center">
-              Click to copy command
+              Click to insert into editor
             </div>
           </div>
         )}

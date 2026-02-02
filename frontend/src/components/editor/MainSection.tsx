@@ -18,12 +18,37 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
   const [copied, setCopied] = useState(false);
   const [activeLineIndex, setActiveLineIndex] = useState(0);
   const [cursorPosition, setCursorPosition] = useState(0);
-  const { commands, defaults } = useEditorStore();
+  const { commands, defaults, currentProgram, updateProgram } = useEditorStore();
   const { parseInput } = useParser();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const { isOpen: autocompleteOpen, position: autocompletePosition, showAutocomplete, hideAutocomplete } = useAutocomplete();
+  const isExternalUpdate = useRef(false);
+
+  // Sync lines FROM store when currentProgram.mainSection changes externally
+  useEffect(() => {
+    if (!currentProgram) return;
+    const storeContent = currentProgram.mainSection || '';
+    const localContent = lines.join('\n');
+
+    // Only update if content differs and it's not from our own changes
+    if (storeContent !== localContent && !isExternalUpdate.current) {
+      const newLines = storeContent ? storeContent.split('\n') : [''];
+      setLines(newLines);
+    }
+    isExternalUpdate.current = false;
+  }, [currentProgram?.mainSection]);
+
+  // Sync lines TO store when local lines change
+  useEffect(() => {
+    if (!currentProgram) return;
+    const content = lines.join('\n');
+    if (content !== (currentProgram.mainSection || '')) {
+      isExternalUpdate.current = true;
+      updateProgram(currentProgram.id, { mainSection: content });
+    }
+  }, [lines, currentProgram?.id]);
 
   // Parse all lines with debounce
   useEffect(() => {
@@ -338,7 +363,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
 
                 {/* Status icon */}
                 <div
-                  className={`w-4 flex items-center justify-center flex-shrink-0 ${isClickable ? 'cursor-pointer hover:bg-yellow-900/30' : ''}`}
+                  className={`w-6 mx-2 flex items-center justify-center flex-shrink-0 ${isClickable ? 'cursor-pointer hover:bg-yellow-900/30 rounded' : ''}`}
                   onClick={() => isClickable && handleLineClick(index)}
                   title={isClickable ? 'Click to provide missing value' : undefined}
                 >
@@ -354,7 +379,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   onClick={(e) => handleInputClick(index, e)}
                   placeholder={index === 0 && !line ? 'Type command... (Ctrl+Space for suggestions)' : ''}
-                  className="flex-1 bg-transparent text-sm font-mono text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 py-2 pl-0 pr-0 outline-none border-0 min-w-[100px]"
+                  className="flex-1 bg-transparent text-sm font-mono text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 py-2 pl-1 pr-0 outline-none border-0 min-w-[100px]"
                   spellCheck={false}
                 />
 

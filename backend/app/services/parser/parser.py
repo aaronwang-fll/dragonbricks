@@ -764,16 +764,13 @@ def try_parse_routine_call(
     - "mission1" (direct name reference)
     - "square with 200" (with parameters)
     """
-    if not routine_names:
-        return None
+    import re
 
-    has_call = has_token_type(tokens, 'call')
     input_lower = input_str.lower().strip()
-
-    # Check for direct routine name match
     matched_routine = None
     params_str = ''
 
+    # First, check for known routine names
     for routine_name in routine_names:
         # Check if input starts with routine name
         if input_lower.startswith(routine_name):
@@ -800,6 +797,29 @@ def try_parse_routine_call(
         if matched_routine:
             break
 
+    # If no known routine matched, check for generic "run/call <identifier>" pattern
+    if not matched_routine:
+        for prefix in ['run ', 'call ', 'execute ', 'start ']:
+            if input_lower.startswith(prefix):
+                rest = input_lower[len(prefix):].strip()
+                # Extract identifier (word with underscores/numbers, not a reserved word)
+                match = re.match(r'^([a-z][a-z0-9_]*)', rest)
+                if match:
+                    potential_name = match.group(1)
+                    # Skip if it looks like a motor command (has 'motor' token)
+                    if has_token_type(tokens, 'motor'):
+                        return None
+                    # Skip reserved words that are other commands
+                    reserved = ['forward', 'backward', 'left', 'right', 'motor', 'speed', 'arm', 'grabber']
+                    if potential_name not in reserved:
+                        matched_routine = potential_name
+                        rest_after = rest[len(potential_name):].strip()
+                        if rest_after.startswith('with '):
+                            params_str = rest_after[5:].strip()
+                        elif rest_after:
+                            params_str = rest_after
+                        break
+
     if not matched_routine:
         return None
 
@@ -807,7 +827,6 @@ def try_parse_routine_call(
     params = []
     if params_str:
         # Extract numbers from params string
-        import re
         numbers = re.findall(r'-?\d+(?:\.\d+)?', params_str)
         params = numbers
 
