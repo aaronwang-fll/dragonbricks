@@ -78,16 +78,26 @@ export function useParser() {
     }
   }, [getConfig, setCommands, currentProgram]);
 
-  // Synchronous version for compatibility - just returns pending status
+  // Synchronous version for compatibility - preserves existing results while parsing
   const parseInputSync = useCallback((input: string): ParsedCommand[] => {
     const lines = input.split('\n').filter(line => line.trim());
+    const { commands: existingCommands } = useEditorStore.getState();
 
-    const commands: ParsedCommand[] = lines.map((line, index) => ({
-      id: `cmd-${index}-${Date.now()}`,
-      naturalLanguage: line,
-      pythonCode: null,
-      status: 'pending' as const,
-    }));
+    // Preserve existing command data for lines that haven't changed
+    const commands: ParsedCommand[] = lines.map((line, index) => {
+      const existing = existingCommands[index];
+      // If line text matches, keep existing parsed result
+      if (existing && existing.naturalLanguage === line && existing.pythonCode) {
+        return existing;
+      }
+      // Otherwise create new pending command
+      return {
+        id: `cmd-${index}-${Date.now()}`,
+        naturalLanguage: line,
+        pythonCode: null,
+        status: 'pending' as const,
+      };
+    });
 
     setCommands(commands);
 
