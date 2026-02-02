@@ -489,11 +489,20 @@ def try_parse_repeat(tokens: List[Token], input_str: str) -> Optional[ParseResul
     count = int(number.numeric_value or 1)
 
     # Find the action after "times" or ":"
-    times_index = next((i for i, t in enumerate(tokens) if t.type == 'times'), -1)
-    colon_index = next((i for i, t in enumerate(tokens) if t.value == ':'), -1)
-    action_start_index = max(times_index, colon_index) + 1
+    input_lower = input_str.lower()
+    action_str = ''
 
-    if action_start_index >= len(tokens) or action_start_index <= 0:
+    # Try to find action after "times:" or "times :"
+    if 'times:' in input_lower:
+        action_str = input_str[input_lower.index('times:') + 6:].strip()
+    elif 'times :' in input_lower:
+        action_str = input_str[input_lower.index('times :') + 7:].strip()
+    elif ': ' in input_str:
+        action_str = input_str[input_str.index(': ') + 2:].strip()
+    elif ':' in input_str:
+        action_str = input_str[input_str.index(':') + 1:].strip()
+
+    if not action_str:
         return ParseResult(
             success=True,
             python_code=f'for i in range({count}):\n    # Add commands here\n    pass',
@@ -501,10 +510,25 @@ def try_parse_repeat(tokens: List[Token], input_str: str) -> Optional[ParseResul
             command_type='loop'
         )
 
+    # Parse the action recursively (without routine_names to avoid infinite recursion)
+    action_result = parse_command(action_str, None, [], [])
+
+    if action_result.success and action_result.python_code:
+        # Indent the action code
+        action_code = action_result.python_code
+        indented_action = '\n    '.join(action_code.split('\n'))
+        return ParseResult(
+            success=True,
+            python_code=f'for i in range({count}):\n    {indented_action}',
+            confidence=0.9,
+            command_type='loop'
+        )
+
+    # Action couldn't be parsed, include as comment
     return ParseResult(
         success=True,
-        python_code=f'for i in range({count}):',
-        confidence=0.85,
+        python_code=f'for i in range({count}):\n    # {action_str}\n    pass',
+        confidence=0.75,
         command_type='loop'
     )
 
