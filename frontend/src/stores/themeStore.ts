@@ -37,7 +37,7 @@ const getInitialMode = (): ThemeMode => {
       // localStorage not available (SSR or test environment)
     }
   }
-  return 'system';
+  return 'dark';
 };
 
 export const useThemeStore = create<ThemeState>((set) => {
