@@ -98,23 +98,42 @@ export async function downloadFirmware(
   return firmware.buffer;
 }
 
+interface FirmwareMetadataJson {
+  'hub-name-offset': number;
+  'hub-name-size': number;
+  'firmware-version': string;
+}
+
 /**
  * Extract firmware binary from zip file
  */
 export async function extractFirmware(zipData: ArrayBuffer, hubName?: string): Promise<ArrayBuffer> {
   const zip = await JSZip.loadAsync(zipData);
   
-  // Find the firmware.bin file
-  const firmwareFile = zip.file('firmware.bin');
+  // Find the firmware-base.bin file (Pybricks naming convention)
+  const firmwareFile = zip.file('firmware-base.bin');
   if (!firmwareFile) {
-    throw new Error('firmware.bin not found in archive');
+    throw new Error('firmware-base.bin not found in archive');
   }
 
   const firmware = await firmwareFile.async('arraybuffer');
 
   // If a custom hub name is provided, we need to patch it into the firmware
   if (hubName && hubName.trim()) {
-    return patchHubName(firmware, hubName.trim());
+    // Try to get metadata for proper patching
+    const metadataFile = zip.file('firmware.metadata.json');
+    let metadata: FirmwareMetadataJson | null = null;
+    
+    if (metadataFile) {
+      try {
+        const metadataStr = await metadataFile.async('string');
+        metadata = JSON.parse(metadataStr);
+      } catch {
+        // Ignore metadata parsing errors, fall back to search-based patching
+      }
+    }
+    
+    return patchHubName(firmware, hubName.trim(), metadata);
   }
 
   return firmware;
@@ -122,39 +141,45 @@ export async function extractFirmware(zipData: ArrayBuffer, hubName?: string): P
 
 /**
  * Patch custom hub name into firmware
- * The hub name is stored at a specific offset in the firmware
+ * Uses metadata offset if available, otherwise searches for default name
  */
-function patchHubName(firmware: ArrayBuffer, name: string): ArrayBuffer {
-  // Hub name is stored as null-terminated UTF-8 string
-  // Location varies by hub type, but typically at a known offset
-  // For now, we'll use a simplified approach that works for most hubs
-  
-  // Limit name to 16 characters (Bluetooth name limit)
-  const limitedName = name.substring(0, 16);
+function patchHubName(
+  firmware: ArrayBuffer, 
+  name: string, 
+  metadata: FirmwareMetadataJson | null
+): ArrayBuffer {
   const encoder = new TextEncoder();
-  const nameBytes = encoder.encode(limitedName);
-
-  // Create a copy of the firmware
   const patchedFirmware = new Uint8Array(firmware.slice(0));
   
-  // Search for the default name marker and replace
-  // This is a simplified implementation - production would use proper offsets
-  const marker = encoder.encode('Pybricks Hub');
-  
-  for (let i = 0; i < patchedFirmware.length - marker.length; i++) {
-    let found = true;
-    for (let j = 0; j < marker.length; j++) {
-      if (patchedFirmware[i + j] !== marker[j]) {
-        found = false;
+  // Limit name to hub-name-size (default 16 characters)
+  const maxLength = metadata?.['hub-name-size'] || 16;
+  const limitedName = name.substring(0, maxLength);
+  const nameBytes = encoder.encode(limitedName);
+
+  if (metadata && metadata['hub-name-offset']) {
+    // Use metadata offset for precise patching
+    const offset = metadata['hub-name-offset'];
+    const paddedName = new Uint8Array(maxLength);
+    paddedName.set(nameBytes);
+    patchedFirmware.set(paddedName, offset);
+  } else {
+    // Fallback: Search for default name marker and replace
+    const marker = encoder.encode('Pybricks Hub');
+    
+    for (let i = 0; i < patchedFirmware.length - marker.length; i++) {
+      let found = true;
+      for (let j = 0; j < marker.length; j++) {
+        if (patchedFirmware[i + j] !== marker[j]) {
+          found = false;
+          break;
+        }
+      }
+      if (found) {
+        const paddedName = new Uint8Array(marker.length);
+        paddedName.set(nameBytes);
+        patchedFirmware.set(paddedName, i);
         break;
       }
-    }
-    if (found) {
-      // Replace with custom name (null-padded)
-      const paddedName = new Uint8Array(marker.length);
-      paddedName.set(nameBytes);
-      patchedFirmware.set(paddedName, i);
-      break;
     }
   }
 
