@@ -120,29 +120,26 @@ export function RoutinesSection() {
       ref={sectionRef}
       className="bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 h-full overflow-y-auto flex flex-col"
     >
-      <button
-        onClick={() => setShowRoutines(!showRoutines)}
-        className="w-full px-3 py-2 flex items-center justify-between text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-        aria-expanded={showRoutines}
-        aria-controls="routines-panel"
-      >
-        <div className="flex items-center gap-2">
+      <div className="w-full px-3 py-2 flex items-center justify-between text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+        <button
+          onClick={() => setShowRoutines(!showRoutines)}
+          className="flex items-center gap-2 bg-transparent border-none cursor-pointer"
+          aria-expanded={showRoutines}
+          aria-controls="routines-panel"
+        >
           <span>{showRoutines ? '▼' : '▶'}</span>
           Routines ({routines.length})
-        </div>
+        </button>
         {showRoutines && (
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleAddRoutine();
-            }}
+            onClick={handleAddRoutine}
             className="px-2 py-0.5 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded"
             aria-label="Add new routine"
           >
             + Add
           </button>
         )}
-      </button>
+      </div>
 
       {showRoutines && (
         <div id="routines-panel" className="p-3 pt-0 overflow-y-auto flex-1">

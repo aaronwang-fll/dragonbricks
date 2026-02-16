@@ -103,15 +103,26 @@ export async function connectToHub(
     // Connect to GATT server
     let server;
     try {
+      console.log('[Pybricks] Connecting to GATT server...');
+      console.log('[Pybricks] Device:', device.name, 'ID:', device.id);
+      console.log('[Pybricks] GATT connected?', device.gatt?.connected);
+      
       server = await device.gatt.connect();
+      console.log('[Pybricks] GATT connected successfully');
     } catch (gattError) {
-      const msg = gattError instanceof Error ? gattError.message : '';
+      console.error('[Pybricks] GATT connection error:', gattError);
+      const msg = gattError instanceof Error ? gattError.message : String(gattError);
+      
       if (msg.includes('Not supported') || msg.includes('not supported')) {
         onConnection('error', 
           'GATT connection not supported. This usually means:\n' +
-          '1. The hub does not have Pybricks firmware installed (use Tools → Install Pybricks Firmware)\n' +
-          '2. The hub is already connected to another device\n' +
-          '3. Try turning the hub off and on again'
+          '• The hub is already connected to another app (close Pybricks Code or other BLE apps)\n' +
+          '• Try: Turn hub off, wait 5 seconds, turn back on\n' +
+          '• On macOS: Check System Settings → Privacy & Security → Bluetooth permissions for your browser'
+        );
+      } else if (msg.includes('denied') || msg.includes('permission')) {
+        onConnection('error',
+          'Bluetooth permission denied. On macOS: System Settings → Privacy & Security → Bluetooth → Enable for your browser'
         );
       } else {
         onConnection('error', `GATT connection failed: ${msg}`);
