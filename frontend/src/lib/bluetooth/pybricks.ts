@@ -58,7 +58,7 @@ export async function connectToHub(
   onStatus?: StatusCallback
 ): Promise<PybricksHub | null> {
   if (!isBluetoothSupported()) {
-    onConnection('error', 'Web Bluetooth is not supported in this browser');
+    onConnection('error', 'Web Bluetooth is not supported in this browser. Please use Chrome or Edge.');
     return null;
   }
 
@@ -69,21 +69,67 @@ export async function connectToHub(
     // Request the device
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const bluetooth = (navigator as any).bluetooth;
-    const device = await bluetooth.requestDevice({
-      filters: [{ services: [PYBRICKS_SERVICE_UUID] }],
-      optionalServices: [PYBRICKS_SERVICE_UUID],
-    });
+    
+    // Check if Bluetooth is available and enabled
+    const available = await bluetooth.getAvailability?.() ?? true;
+    if (!available) {
+      onConnection('error', 'Bluetooth is not available. Please enable Bluetooth on your device.');
+      return null;
+    }
+
+    let device;
+    try {
+      device = await bluetooth.requestDevice({
+        filters: [{ services: [PYBRICKS_SERVICE_UUID] }],
+        optionalServices: [PYBRICKS_SERVICE_UUID],
+      });
+    } catch (requestError) {
+      const msg = requestError instanceof Error ? requestError.message : '';
+      if (msg.includes('cancelled') || msg.includes('canceled')) {
+        onConnection('error', 'Connection cancelled by user.');
+      } else if (msg.includes('No device') || msg.includes('not found')) {
+        onConnection('error', 'No Pybricks hub found. Make sure your hub has Pybricks firmware installed and is turned on (not running a program).');
+      } else {
+        onConnection('error', `Could not find hub: ${msg}`);
+      }
+      return null;
+    }
 
     if (!device.gatt) {
-      onConnection('error', 'GATT not available');
+      onConnection('error', 'GATT not available on this device.');
       return null;
     }
 
     // Connect to GATT server
-    const server = await device.gatt.connect();
+    let server;
+    try {
+      server = await device.gatt.connect();
+    } catch (gattError) {
+      const msg = gattError instanceof Error ? gattError.message : '';
+      if (msg.includes('Not supported') || msg.includes('not supported')) {
+        onConnection('error', 
+          'GATT connection not supported. This usually means:\n' +
+          '1. The hub does not have Pybricks firmware installed (use Tools → Install Pybricks Firmware)\n' +
+          '2. The hub is already connected to another device\n' +
+          '3. Try turning the hub off and on again'
+        );
+      } else {
+        onConnection('error', `GATT connection failed: ${msg}`);
+      }
+      return null;
+    }
 
     // Get the Pybricks service
-    const service = await server.getPrimaryService(PYBRICKS_SERVICE_UUID);
+    let service;
+    try {
+      service = await server.getPrimaryService(PYBRICKS_SERVICE_UUID);
+    } catch (serviceError) {
+      onConnection('error', 
+        'Pybricks service not found on hub. Make sure the hub has Pybricks firmware installed.'
+      );
+      device.gatt.disconnect();
+      return null;
+    }
 
     // Get characteristics
     const controlChar = await service.getCharacteristic(PYBRICKS_CONTROL_CHAR_UUID);
@@ -110,7 +156,7 @@ export async function connectToHub(
     return currentHub;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    onConnection('error', message);
+    onConnection('error', `Connection failed: ${message}`);
     return null;
   }
 }
