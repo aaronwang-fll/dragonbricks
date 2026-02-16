@@ -23,58 +23,46 @@ export interface InstallProgress extends DFUProgress {
 
 export type InstallProgressCallback = (progress: InstallProgress) => void;
 
-// Pybricks firmware comes from GitHub releases
-const GITHUB_API = 'https://api.github.com/repos/pybricks/pybricks-micropython/releases/latest';
+// Firmware downloads are proxied through our backend to avoid CORS issues
+const FIRMWARE_API = '/api/v1/firmware';
 
-interface GitHubRelease {
-  tag_name: string;
+interface FirmwareInfoResponse {
+  version: string;
   assets: Array<{
+    hub_type: string;
     name: string;
-    browser_download_url: string;
     size: number;
+    download_url: string;
   }>;
 }
 
 /**
- * Fetch firmware metadata for a hub type from GitHub releases
+ * Fetch firmware metadata for a hub type from our backend
  */
 export async function getFirmwareInfo(hubType: HubType): Promise<FirmwareMetadata> {
-  const response = await fetch(GITHUB_API);
+  const response = await fetch(`${FIRMWARE_API}/info`);
   if (!response.ok) {
     throw new Error(`Failed to fetch firmware info: ${response.statusText}`);
   }
-  const release: GitHubRelease = await response.json();
-  const asset = release.assets.find(a => a.name.includes(hubType));
+  const data: FirmwareInfoResponse = await response.json();
+  const asset = data.assets.find(a => a.hub_type === hubType);
   
   return {
-    version: release.tag_name,
+    version: data.version,
     hubType,
     size: asset?.size || 0,
   };
 }
 
 /**
- * Download firmware zip file for a hub type from GitHub releases
+ * Download firmware zip file for a hub type via our backend proxy
  */
 export async function downloadFirmware(
   hubType: HubType,
   onProgress?: (downloaded: number, total: number) => void
 ): Promise<ArrayBuffer> {
-  // First get the release info to find the download URL
-  const releaseResponse = await fetch(GITHUB_API);
-  if (!releaseResponse.ok) {
-    throw new Error(`Failed to fetch release info: ${releaseResponse.statusText}`);
-  }
-  const release: GitHubRelease = await releaseResponse.json();
-  
-  // Find the asset for this hub type
-  const asset = release.assets.find(a => a.name.includes(hubType));
-  if (!asset) {
-    throw new Error(`No firmware found for hub type: ${hubType}`);
-  }
-
-  // Download the firmware
-  const response = await fetch(asset.browser_download_url);
+  // Download via our backend proxy (avoids CORS issues with GitHub)
+  const response = await fetch(`${FIRMWARE_API}/download/${hubType}`);
   if (!response.ok) {
     throw new Error(`Failed to download firmware: ${response.statusText}`);
   }
