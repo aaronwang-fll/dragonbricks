@@ -3,7 +3,8 @@ import { useEditorStore } from '../../stores/editorStore';
 import type { Routine } from '../../types';
 
 export function RoutinesSection() {
-  const { currentProgram, showRoutines, setShowRoutines, updateProgram } = useEditorStore();
+  const { currentProgram, showRoutines, setShowRoutines, updateProgram, flushProgramSync } =
+    useEditorStore();
   const routines = useMemo(() => currentProgram?.routines || [], [currentProgram?.routines]);
   const [expandedRoutine, setExpandedRoutine] = useState<string | null>(null);
   const [editingRoutine, setEditingRoutine] = useState<string | null>(null);
@@ -68,10 +69,11 @@ export function RoutinesSection() {
       updateProgram(currentProgram.id, {
         routines: routines.map((r) => (r.id === routineId ? { ...r, body: editValue } : r)),
       });
+      void flushProgramSync(currentProgram.id);
 
       setEditingRoutine(null);
     },
-    [currentProgram, routines, editValue, updateProgram],
+    [currentProgram, routines, editValue, updateProgram, flushProgramSync],
   );
 
   const handleRenameRoutine = useCallback(

@@ -1,6 +1,13 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useEditorStore } from '../../stores/editorStore';
+import { useAuthStore } from '../../stores/authStore';
 import type { Program } from '../../types';
+import { api } from '../../lib/api';
+import {
+  isLocalProgramId,
+  mapApiProgramListItemToFrontendProgram,
+  mapApiProgramToFrontendProgram,
+} from '../../lib/programAdapters';
 
 // FLL Tutorial Examples organized by category
 const TUTORIAL_EXAMPLES = {
@@ -10,7 +17,7 @@ const TUTORIAL_EXAMPLES = {
     { name: 'Turn left', command: 'turn left 90 degrees' },
     { name: 'Turn right', command: 'turn right 45 degrees' },
   ],
-  'Sensors': [
+  Sensors: [
     { name: 'Drive to black line', command: 'go forward until the light sensor detects black' },
     { name: 'Drive to white', command: 'go forward until the color sensor detects white' },
     { name: 'Wait for color', command: 'wait until color sensor detects red' },
@@ -22,20 +29,29 @@ const TUTORIAL_EXAMPLES = {
     { name: 'Wait', command: 'wait 2 seconds' },
     { name: 'Stop', command: 'stop' },
   ],
-  'Advanced': [
+  Advanced: [
     { name: 'Repeat', command: 'repeat 3 times' },
     { name: 'Precise turn', command: 'turn left precisely 90 degrees' },
     { name: 'Follow line', command: 'follow line for 500mm' },
     { name: 'Parallel task', command: 'move forward 200mm while running motor 180 degrees' },
   ],
-  'Routines': [
+  Routines: [
     { name: 'Call routine', command: 'run grab_object' },
     { name: 'Call routine 3 times', command: 'repeat 3 times: run grab_object' },
   ],
 };
 
 export function Sidebar() {
-  const { programs, currentProgram, setCurrentProgram, addProgram, updateProgram, deleteProgram } = useEditorStore();
+  const {
+    programs,
+    currentProgram,
+    setCurrentProgram,
+    setPrograms,
+    replaceProgram,
+    addProgram,
+    updateProgram,
+    deleteProgram,
+  } = useEditorStore();
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [newFileName, setNewFileName] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -43,6 +59,80 @@ export function Sidebar() {
   const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [showExamples, setShowExamples] = useState(false);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [isLoadingPrograms, setIsLoadingPrograms] = useState(false);
+  const [programLoadError, setProgramLoadError] = useState<string | null>(null);
+  const [loadingProgramId, setLoadingProgramId] = useState<string | null>(null);
+  const activeProgramRequestRef = useRef(0);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+  const loadProgramFromCloud = useCallback(
+    async (program: Program) => {
+      setCurrentProgram(program);
+
+      if (!isAuthenticated || isLocalProgramId(program.id)) {
+        return;
+      }
+
+      const requestId = activeProgramRequestRef.current + 1;
+      activeProgramRequestRef.current = requestId;
+      setLoadingProgramId(program.id);
+
+      try {
+        const cloudProgram = await api.getProgram(program.id);
+        if (activeProgramRequestRef.current !== requestId) {
+          return;
+        }
+
+        const hydratedProgram = mapApiProgramToFrontendProgram(cloudProgram);
+        replaceProgram(program.id, hydratedProgram);
+        setCurrentProgram(hydratedProgram);
+      } catch (error) {
+        if (activeProgramRequestRef.current !== requestId) {
+          return;
+        }
+        console.error('Failed to load program from backend:', error);
+      } finally {
+        if (activeProgramRequestRef.current === requestId) {
+          setLoadingProgramId(null);
+        }
+      }
+    },
+    [isAuthenticated, replaceProgram, setCurrentProgram],
+  );
+
+  const fetchCloudPrograms = useCallback(async () => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    setIsLoadingPrograms(true);
+    setProgramLoadError(null);
+
+    try {
+      const cloudPrograms = await api.listPrograms();
+      const mappedPrograms = cloudPrograms.map(mapApiProgramListItemToFrontendProgram);
+      setPrograms(mappedPrograms);
+
+      if (mappedPrograms.length > 0) {
+        await loadProgramFromCloud(mappedPrograms[0]);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to load programs.';
+      setProgramLoadError(message);
+    } finally {
+      setIsLoadingPrograms(false);
+    }
+  }, [isAuthenticated, loadProgramFromCloud, setPrograms]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setProgramLoadError(null);
+      setIsLoadingPrograms(false);
+      return;
+    }
+
+    void fetchCloudPrograms();
+  }, [fetchCloudPrograms, isAuthenticated]);
 
   const handleNewFile = () => {
     setNewFileName('');
@@ -68,7 +158,7 @@ export function Sidebar() {
   };
 
   const handleRename = (id: string) => {
-    const program = programs.find(p => p.id === id);
+    const program = programs.find((p) => p.id === id);
     if (program) {
       setEditingId(id);
       setEditingName(program.name);
@@ -85,7 +175,7 @@ export function Sidebar() {
   };
 
   const handleExport = (id: string) => {
-    const program = programs.find(p => p.id === id);
+    const program = programs.find((p) => p.id === id);
     if (program) {
       const data = JSON.stringify(program, null, 2);
       const blob = new Blob([data], { type: 'application/json' });
@@ -116,11 +206,14 @@ export function Sidebar() {
 
     // Append the command to the mainSection (on a new line if there's existing content)
     const currentContent = currentProgram.mainSection || '';
-    const newContent = currentContent
-      ? `${currentContent}\n${command}`
-      : command;
+    const newContent = currentContent ? `${currentContent}\n${command}` : command;
 
     updateProgram(currentProgram.id, { mainSection: newContent });
+  };
+
+  const handleSelectProgram = (program: Program) => {
+    setProgramLoadError(null);
+    void loadProgramFromCloud(program);
   };
 
   return (
@@ -136,23 +229,43 @@ export function Sidebar() {
       </div>
 
       {/* Files header */}
-      <div className="px-3 py-2 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
-        <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Programs ({programs.length})</span>
+      <div className="px-3 py-2 bg-gray-50 dark:bg-gray-900 flex items-center justify-between flex-shrink-0">
+        <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+          Programs ({programs.length})
+        </span>
+        <span className="text-[10px] text-gray-400 dark:text-gray-500 uppercase">
+          {isAuthenticated ? 'Cloud' : 'Local'}
+        </span>
       </div>
 
       {/* File list */}
       <div className="flex-1 overflow-y-auto min-h-0">
-        {programs.length === 0 ? (
-          <div className="p-3 text-sm text-gray-400 text-center">
-            No programs yet
+        {isAuthenticated && isLoadingPrograms ? (
+          <div className="p-4 flex flex-col items-center justify-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+            <span className="h-4 w-4 rounded-full border-2 border-gray-300 border-t-blue-500 animate-spin" />
+            Loading programs...
           </div>
+        ) : isAuthenticated && programLoadError ? (
+          <div className="p-3 space-y-2 text-center">
+            <p className="text-xs text-red-500">{programLoadError}</p>
+            <button
+              onClick={() => void fetchCloudPrograms()}
+              className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-200"
+            >
+              Retry
+            </button>
+          </div>
+        ) : programs.length === 0 ? (
+          <div className="p-3 text-sm text-gray-400 text-center">No programs yet</div>
         ) : (
           programs.map((program) => (
             <div
               key={program.id}
               onContextMenu={(e) => handleContextMenu(e, program.id)}
               className={`group relative ${
-                currentProgram?.id === program.id ? 'bg-blue-100 dark:bg-blue-900/30' : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                currentProgram?.id === program.id
+                  ? 'bg-blue-100 dark:bg-blue-900/30'
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
             >
               {editingId === program.id ? (
@@ -171,42 +284,86 @@ export function Sidebar() {
               ) : (
                 <div className="flex items-center">
                   <button
-                    onClick={() => setCurrentProgram(program)}
+                    onClick={() => handleSelectProgram(program)}
                     className={`flex-1 px-3 py-2 text-left text-sm truncate ${
-                      currentProgram?.id === program.id ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'
+                      currentProgram?.id === program.id
+                        ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-gray-700 dark:text-gray-300'
                     }`}
                   >
                     {program.name}
                   </button>
+                  {loadingProgramId === program.id && (
+                    <span className="h-3 w-3 rounded-full border-2 border-gray-400 border-t-blue-500 animate-spin mr-1" />
+                  )}
                   <div className="flex items-center gap-0.5 pr-1">
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleRename(program.id); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRename(program.id);
+                      }}
                       className="p-1 hover:bg-gray-600 rounded group/rename relative"
                     >
-                      <svg className="w-3 h-3 text-gray-500 hover:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      <svg
+                        className="w-3 h-3 text-gray-500 hover:text-gray-300"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                        />
                       </svg>
                       <span className="absolute right-full top-1/2 -translate-y-1/2 mr-1 px-2 py-1 bg-gray-600 text-white text-xs rounded opacity-0 group-hover/rename:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
                         Rename
                       </span>
                     </button>
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleExport(program.id); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleExport(program.id);
+                      }}
                       className="p-1 hover:bg-gray-600 rounded group/export relative"
                     >
-                      <svg className="w-3 h-3 text-gray-500 hover:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      <svg
+                        className="w-3 h-3 text-gray-500 hover:text-gray-300"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                        />
                       </svg>
                       <span className="absolute right-full top-1/2 -translate-y-1/2 mr-1 px-2 py-1 bg-gray-600 text-white text-xs rounded opacity-0 group-hover/export:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
                         Export
                       </span>
                     </button>
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleDelete(program.id); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(program.id);
+                      }}
                       className="p-1 hover:bg-red-900/30 rounded group/delete relative"
                     >
-                      <svg className="w-3 h-3 text-gray-500 hover:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      <svg
+                        className="w-3 h-3 text-gray-500 hover:text-red-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
                       </svg>
                       <span className="absolute right-full top-1/2 -translate-y-1/2 mr-1 px-2 py-1 bg-gray-600 text-white text-xs rounded opacity-0 group-hover/delete:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
                         Delete
@@ -229,7 +386,9 @@ export function Sidebar() {
           <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
             Examples
           </span>
-          <span className={`text-xs text-gray-400 transition-transform ${showExamples ? 'rotate-180' : ''}`}>
+          <span
+            className={`text-xs text-gray-400 transition-transform ${showExamples ? 'rotate-180' : ''}`}
+          >
             ▼
           </span>
         </button>
@@ -239,10 +398,14 @@ export function Sidebar() {
             {Object.entries(TUTORIAL_EXAMPLES).map(([category, examples]) => (
               <div key={category}>
                 <button
-                  onClick={() => setExpandedCategory(expandedCategory === category ? null : category)}
+                  onClick={() =>
+                    setExpandedCategory(expandedCategory === category ? null : category)
+                  }
                   className="w-full px-3 py-1.5 text-left text-xs font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center gap-1"
                 >
-                  <span className={`text-[10px] transition-transform ${expandedCategory === category ? 'rotate-90' : ''}`}>
+                  <span
+                    className={`text-[10px] transition-transform ${expandedCategory === category ? 'rotate-90' : ''}`}
+                  >
                     ▶
                   </span>
                   {category}
@@ -274,7 +437,9 @@ export function Sidebar() {
       {showNewDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-4 w-80 shadow-xl">
-            <h3 className="text-lg font-semibold mb-3 text-gray-800 dark:text-white">New Program</h3>
+            <h3 className="text-lg font-semibold mb-3 text-gray-800 dark:text-white">
+              New Program
+            </h3>
             <input
               type="text"
               value={newFileName}
@@ -308,10 +473,7 @@ export function Sidebar() {
       {/* Context menu */}
       {contextMenu && (
         <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setContextMenu(null)}
-          />
+          <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)} />
           <div
             className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 min-w-32"
             style={{ left: contextMenu.x, top: contextMenu.y }}
@@ -321,7 +483,12 @@ export function Sidebar() {
               className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                />
               </svg>
               Rename
             </button>
@@ -330,7 +497,12 @@ export function Sidebar() {
               className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                />
               </svg>
               Export
             </button>
@@ -340,7 +512,12 @@ export function Sidebar() {
               className="w-full px-3 py-2 text-left text-sm hover:bg-red-900/30 text-red-400 flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
               </svg>
               Delete
             </button>
