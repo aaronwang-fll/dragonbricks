@@ -2,8 +2,7 @@
 Pytest configuration and fixtures for backend tests.
 """
 
-import asyncio
-from typing import AsyncGenerator, Generator
+from typing import AsyncGenerator
 
 import pytest
 import pytest_asyncio
@@ -34,14 +33,6 @@ TestSessionLocal = async_sessionmaker(
     autocommit=False,
     autoflush=False,
 )
-
-
-@pytest.fixture(scope="session")
-def event_loop() -> Generator:
-    """Create an event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
 
 
 @pytest_asyncio.fixture

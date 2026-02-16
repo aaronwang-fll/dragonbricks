@@ -700,7 +700,7 @@ def try_parse_parallel(tokens: List[Token], input_str: str) -> Optional[ParseRes
 
     if has_parallel:
         return ParseResult(
-            success=True,
+            success=False,
             python_code="""async def task1():
     # First action
     pass
@@ -713,6 +713,7 @@ await multitask(task1(), task2())""",
             confidence=0.7,
             command_type="parallel",
             needs_llm=True,  # Complex parallel needs LLM
+            error="Parallel command needs LLM disambiguation",
         )
 
     return None
@@ -811,8 +812,9 @@ def try_parse_routine_call(
         if matched_routine:
             break
 
-    # If no known routine matched, check for generic "run/call <identifier>" pattern
-    if not matched_routine:
+    # If no known routine matched, optionally allow generic calls only when
+    # no routine definitions were provided.
+    if not matched_routine and not routine_names:
         for prefix in ["run ", "call ", "execute ", "start "]:
             if input_lower.startswith(prefix):
                 rest = input_lower[len(prefix) :].strip()
@@ -918,6 +920,15 @@ def try_parse_multitask(
 
     if not task1_desc or not task2_desc:
         return None
+
+    # Remove leading parallel modifiers from sub-tasks to avoid recursive
+    # fallback into generic "parallel" stubs.
+    task_prefixes = ["parallel ", "simultaneously ", "together ", "concurrently "]
+    for prefix in task_prefixes:
+        if task1_desc.startswith(prefix):
+            task1_desc = task1_desc[len(prefix) :].strip()
+        if task2_desc.startswith(prefix):
+            task2_desc = task2_desc[len(prefix) :].strip()
 
     # Parse each task independently
     task1_result = parse_command(task1_desc, config, motor_names, [])

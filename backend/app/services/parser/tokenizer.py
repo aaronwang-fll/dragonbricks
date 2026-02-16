@@ -196,8 +196,10 @@ def classify_word(word: str) -> Token:
     # Try fuzzy matching with stricter tolerance
     # Only fuzzy match if the word is at least 4 characters and the match is close
     if len(word) >= 4 and word not in patterns.VERB_BLACKLIST:
-        verb_match = find_best_match(word, patterns.ALL_VERBS, 2)
-        if verb_match:
+        # Keep verb fuzzy matching conservative to avoid semantic mismatches
+        # like "dance" -> "advance".
+        verb_match = find_best_match(word, patterns.ALL_VERBS, 1)
+        if verb_match and verb_match[0][0] == word[0]:
             return Token(type="verb", value=word, normalized=verb_match[0])
 
         dir_match = find_best_match(word, patterns.ALL_DIRECTIONS, 2)
