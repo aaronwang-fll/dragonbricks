@@ -8,6 +8,7 @@ import { SettingsPage } from './components/settings/SettingsPage';
 import { FirmwareWizard } from './components/firmware';
 import { LoginPage } from './components/auth/LoginPage';
 import { RegisterPage } from './components/auth/RegisterPage';
+import { ConsolePanel } from './components/console';
 import { api } from './lib/api';
 import { useAuthStore } from './stores/authStore';
 
@@ -100,9 +101,12 @@ function App() {
       />
       <div className="flex-1 flex">
         <Sidebar />
-        <main className="flex-1 flex">
-          <EditorPanel />
-          <PreviewPanel />
+        <main className="flex-1 flex flex-col">
+          <div className="flex-1 flex min-h-0">
+            <EditorPanel />
+            <PreviewPanel />
+          </div>
+          <ConsolePanel />
         </main>
       </div>
       <StatusBar />
