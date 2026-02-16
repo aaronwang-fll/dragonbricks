@@ -133,22 +133,59 @@ export async function connectToHub(
     // Get the Pybricks service
     let service;
     try {
+      console.log('[Pybricks] Getting primary service:', PYBRICKS_SERVICE_UUID);
       service = await server.getPrimaryService(PYBRICKS_SERVICE_UUID);
+      console.log('[Pybricks] Service found:', service);
     } catch (serviceError) {
+      console.error('[Pybricks] Service error:', serviceError);
       onConnection('error', 
-        'Pybricks service not found on hub. Make sure the hub has Pybricks firmware installed.'
+        `Pybricks service not found on "${device.name}". This device may not be a Pybricks hub. Make sure to select your LEGO hub (usually named "Pybricks Hub" or similar).`
       );
       device.gatt.disconnect();
       return null;
     }
 
     // Get characteristics
-    const controlChar = await service.getCharacteristic(PYBRICKS_CONTROL_CHAR_UUID);
-    const hubChar = await service.getCharacteristic(PYBRICKS_HUB_CHAR_UUID);
+    let controlChar, hubChar;
+    try {
+      console.log('[Pybricks] Getting control characteristic...');
+      controlChar = await service.getCharacteristic(PYBRICKS_CONTROL_CHAR_UUID);
+      console.log('[Pybricks] Getting hub characteristic...');
+      hubChar = await service.getCharacteristic(PYBRICKS_HUB_CHAR_UUID);
+      console.log('[Pybricks] All characteristics found');
+    } catch (charError) {
+      console.error('[Pybricks] Characteristic error:', charError);
+      onConnection('error', 
+        `Could not access Pybricks characteristics on "${device.name}". The hub firmware may be outdated.`
+      );
+      device.gatt.disconnect();
+      return null;
+    }
 
     // Subscribe to hub notifications
-    await hubChar.startNotifications();
-    hubChar.addEventListener('characteristicvaluechanged', handleHubNotification);
+    try {
+      console.log('[Pybricks] Hub characteristic properties:', hubChar.properties);
+      console.log('[Pybricks] - notify:', hubChar.properties.notify);
+      console.log('[Pybricks] - indicate:', hubChar.properties.indicate);
+      console.log('[Pybricks] - read:', hubChar.properties.read);
+      console.log('[Pybricks] - write:', hubChar.properties.write);
+      
+      // Only start notifications if the characteristic supports it
+      if (hubChar.properties.notify || hubChar.properties.indicate) {
+        console.log('[Pybricks] Starting notifications...');
+        await hubChar.startNotifications();
+        console.log('[Pybricks] Notifications started');
+        hubChar.addEventListener('characteristicvaluechanged', handleHubNotification);
+      } else {
+        console.log('[Pybricks] Hub characteristic does not support notifications, skipping...');
+        // Still proceed - we can poll or just not get status updates
+      }
+    } catch (notifyError) {
+      console.error('[Pybricks] Notification error:', notifyError);
+      // Don't fail the connection - notifications are nice-to-have for status updates
+      // We can still upload and run programs without them
+      console.log('[Pybricks] Continuing without notifications (program upload/run will still work)');
+    }
 
     // Handle disconnection
     device.addEventListener('gattserverdisconnected', () => {
@@ -163,6 +200,7 @@ export async function connectToHub(
       isConnected: true,
     };
 
+    console.log('[Pybricks] Connection complete!');
     onConnection('connected');
     return currentHub;
   } catch (error) {
