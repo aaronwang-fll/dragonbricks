@@ -18,6 +18,8 @@ Knowledge base for the DragonBricks project — a natural language to Pybricks P
 | [Data Models](design/data-models.md) | Database schema, relationships, enums |
 | [API](design/api.md) | REST endpoints, request/response schemas, auth |
 | [UI](design/ui.md) | Layout, panels, component responsibilities |
+| [Firmware Installer](design/firmware-installer.md) | Pybricks firmware installation via WebUSB |
+| [LEGO Bootloader](design/lego-bootloader.md) | USB DFU / DfuSe protocol for SPIKE hubs |
 
 ## Progress
 

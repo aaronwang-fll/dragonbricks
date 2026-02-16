@@ -1,6 +1,6 @@
 # Implementation Status
 
-Last updated: 2026-02-15
+Last updated: 2026-02-16
 
 ## Summary
 
@@ -39,6 +39,7 @@ DragonBricks is a functional MVP with the core editing loop working end-to-end: 
 | Linting (ESLint + Ruff) | Configured | Configured | CI |
 | Formatting (Prettier + Ruff) | Configured | Configured | CI |
 | AI agent harness | — | AGENTS.md, .claude/ | — |
+| Pybricks firmware installer | FirmwareWizard, WebDFU | /api/v1/firmware proxy | Manual tested |
 
 ### Partially Implemented (Scaffolded)
 
@@ -140,6 +141,7 @@ Commands the rule-based parser handles (no LLM needed):
 1. **Frontend auth UI** — Login/register pages so users can authenticate
 2. **Cloud program sync** — Connect Sidebar program list to backend API
 3. **LLM frontend trigger** — Wire up `needs_llm` commands to `/llm/parse` endpoint
-4. **Web Bluetooth connection** — Implement actual BLE protocol for SPIKE Prime
-5. **Program export** — Download generated Python as `.py` file
-6. **E2E tests** — Playwright tests for critical user journeys
+4. **Web Bluetooth program upload** — Implement BLE protocol for uploading programs to SPIKE Prime
+5. **BLE firmware installer** — Support City/Technic/Move hubs via LWP3 bootloader
+6. **Program export** — Download generated Python as `.py` file
+7. **E2E tests** — Playwright tests for critical user journeys
