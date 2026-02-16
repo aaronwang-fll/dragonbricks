@@ -13,7 +13,11 @@ export interface HubDefinition {
   description: string;
   image: string;
   usbVendorId: number;
-  usbProductId: number;
+  /**
+   * USB product IDs that may appear for this hub when it is in bootloader/DFU mode.
+   * (Some hubs have multiple bootloader PIDs, e.g. Prime vs Robot Inventor.)
+   */
+  usbBootloaderProductIds: number[];
   maxFirmwareSize: number;
 }
 
@@ -27,7 +31,8 @@ export const HUB_DEFINITIONS: Record<HubType, HubDefinition> = {
     description: 'LEGO Education SPIKE Prime Hub or Mindstorms Robot Inventor Hub',
     image: '/images/hubs/primehub.png',
     usbVendorId: LEGO_VENDOR_ID,
-    usbProductId: 0x0008,
+    // SPIKE Prime Bootloader (0x0008) and Robot Inventor Bootloader (0x0011)
+    usbBootloaderProductIds: [0x0008, 0x0011],
     maxFirmwareSize: 1024 * 1024, // 1MB
   },
   essentialhub: {
@@ -36,16 +41,18 @@ export const HUB_DEFINITIONS: Record<HubType, HubDefinition> = {
     description: 'LEGO Education SPIKE Essential Hub',
     image: '/images/hubs/essentialhub.png',
     usbVendorId: LEGO_VENDOR_ID,
-    usbProductId: 0x0011,
+    // SPIKE Essential Bootloader (0x000c)
+    usbBootloaderProductIds: [0x000c],
     maxFirmwareSize: 512 * 1024, // 512KB
   },
+  // Note: City/Technic/Move hubs use a different (BLE) bootloader protocol for Pybricks.
   cityhub: {
     id: 'cityhub',
     name: 'City Hub',
     description: 'Powered Up City Hub',
     image: '/images/hubs/cityhub.png',
     usbVendorId: LEGO_VENDOR_ID,
-    usbProductId: 0x0040,
+    usbBootloaderProductIds: [],
     maxFirmwareSize: 256 * 1024, // 256KB
   },
   technichub: {
@@ -54,7 +61,7 @@ export const HUB_DEFINITIONS: Record<HubType, HubDefinition> = {
     description: 'Powered Up Technic Hub',
     image: '/images/hubs/technichub.png',
     usbVendorId: LEGO_VENDOR_ID,
-    usbProductId: 0x0041,
+    usbBootloaderProductIds: [],
     maxFirmwareSize: 256 * 1024, // 256KB
   },
   movehub: {
@@ -63,7 +70,7 @@ export const HUB_DEFINITIONS: Record<HubType, HubDefinition> = {
     description: 'LEGO BOOST Move Hub',
     image: '/images/hubs/movehub.png',
     usbVendorId: LEGO_VENDOR_ID,
-    usbProductId: 0x0042,
+    usbBootloaderProductIds: [],
     maxFirmwareSize: 256 * 1024, // 256KB
   },
 };
@@ -85,17 +92,29 @@ export function getAllHubTypes(): HubDefinition[] {
 
 // WebUSB filter for requesting devices
 export function getWebUSBFilters(): USBDeviceFilter[] {
-  return Object.values(HUB_DEFINITIONS).map(hub => ({
+  const filters: USBDeviceFilter[] = [];
+
+  for (const hub of Object.values(HUB_DEFINITIONS)) {
+    for (const productId of hub.usbBootloaderProductIds) {
+      filters.push({ vendorId: hub.usbVendorId, productId });
+    }
+  }
+
+  return filters;
+}
+
+export function getWebUSBFiltersForHub(hubType: HubType): USBDeviceFilter[] {
+  const hub = HUB_DEFINITIONS[hubType];
+  return hub.usbBootloaderProductIds.map((productId) => ({
     vendorId: hub.usbVendorId,
-    productId: hub.usbProductId,
+    productId,
   }));
 }
 
 export function identifyHubFromUSB(device: USBDevice): HubDefinition | null {
   for (const hub of Object.values(HUB_DEFINITIONS)) {
-    if (device.vendorId === hub.usbVendorId && device.productId === hub.usbProductId) {
-      return hub;
-    }
+    if (device.vendorId !== hub.usbVendorId) continue;
+    if (hub.usbBootloaderProductIds.includes(device.productId)) return hub;
   }
   return null;
 }

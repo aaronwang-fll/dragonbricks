@@ -1,59 +1,89 @@
-import { useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { useFirmwareStore } from '../../stores/firmwareStore';
+import { installFirmware } from '../../lib/firmware/installer';
 
 export function FlashingStep() {
-  const { selectedHub, prevStep, setStep } = useFirmwareStore();
+  const {
+    selectedHub,
+    hubName,
+    prevStep,
+    setStep,
+    installProgress,
+    setInstallProgress,
+    setError,
+  } = useFirmwareStore();
 
-  const openPybricksCode = useCallback(() => {
-    // Open Pybricks Code in a new tab - they have the proper bootloader implementation
-    window.open('https://code.pybricks.com/', '_blank');
-    setStep('complete');
-  }, [setStep]);
+  const startedRef = useRef(false);
+
+  useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+
+    if (!selectedHub) {
+      setError('No hub selected');
+      setStep('hub-select');
+      return;
+    }
+
+    (async () => {
+      try {
+        setError(null);
+        setInstallProgress(null);
+
+        await installFirmware(selectedHub, hubName || undefined, (p) => {
+          setInstallProgress(p);
+        });
+
+        setStep('complete');
+      } catch (err) {
+        setError((err as Error).message);
+        // stay on flashing step so user can read the error and go back
+      }
+    })();
+  }, [selectedHub, hubName, setError, setInstallProgress, setStep]);
+
+  const pct = installProgress?.percentage ?? 0;
+  const message = installProgress?.message ?? 'Preparing…';
 
   return (
     <div>
       <div className="text-center py-6">
-        {/* Info icon */}
         <div className="mb-6">
           <div className="w-20 h-20 mx-auto bg-blue-900/30 rounded-full flex items-center justify-center text-blue-400">
-            <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-10 h-10 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
         </div>
 
-        <h3 className="text-lg font-medium text-white mb-4">
-          Ready to Install Firmware
-        </h3>
+        <h3 className="text-lg font-medium text-white mb-2">Flashing Firmware</h3>
+        <p className="text-gray-400 mb-6 max-w-md mx-auto">{message}</p>
 
-        <p className="text-gray-400 mb-6 max-w-md mx-auto">
-          You've selected <strong className="text-white">{selectedHub}</strong> hub.
-          The actual firmware installation will be done through Pybricks Code, 
-          which has the specialized bootloader protocol for LEGO hubs.
-        </p>
+        <div className="max-w-md mx-auto">
+          <div className="flex justify-between text-sm text-gray-400 mb-2">
+            <span className="capitalize">{installProgress?.step ?? 'starting'}</span>
+            <span>{pct}%</span>
+          </div>
+          <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-600 transition-all duration-300"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
 
-        <div className="bg-blue-900/30 border border-blue-700/50 rounded-lg p-4 mb-6 max-w-md mx-auto">
-          <p className="text-blue-300 text-sm">
-            <strong>Note:</strong> Pybricks Code will open in a new tab. Follow their 
-            installation wizard — your hub should still be in update mode (bootloader).
-          </p>
+          <div className="mt-4 bg-yellow-900/30 border border-yellow-700/50 rounded-lg p-3 text-left">
+            <p className="text-yellow-200 text-sm">
+              Keep the USB cable connected and do not close this window while flashing.
+            </p>
+          </div>
         </div>
-
-        <button
-          onClick={openPybricksCode}
-          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors inline-flex items-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-          </svg>
-          Open Pybricks Code
-        </button>
       </div>
 
       <div className="flex justify-start mt-6">
         <button
           onClick={prevStep}
-          className="px-6 py-2 rounded-lg font-medium text-gray-300 hover:text-white transition-colors"
+          disabled={!!installProgress && installProgress.step === 'flashing'}
+          className="px-6 py-2 rounded-lg font-medium text-gray-300 hover:text-white transition-colors disabled:opacity-50"
         >
           Back
         </button>

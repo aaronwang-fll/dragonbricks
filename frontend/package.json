@@ -14,9 +14,11 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@pybricks/firmware": "^7.28.0",
     "@supabase/supabase-js": "^2.93.3",
     "@tailwindcss/vite": "^4.1.18",
     "autoprefixer": "^10.4.24",
+    "dfu": "^0.1.5",
     "jszip": "^3.10.1",
     "postcss": "^8.5.6",
     "react": "^19.2.0",

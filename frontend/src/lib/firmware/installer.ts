@@ -1,14 +1,22 @@
 /**
  * High-level Pybricks Firmware Installer
- * 
- * Coordinates firmware download, extraction, and installation.
+ *
+ * Downloads a Pybricks firmware zip via our backend proxy, builds a flashable
+ * binary (hub name patch + checksum) and flashes it to the hub using LEGO's
+ * USB DFU (DfuSe) bootloader.
  */
 
-import { DFUDevice, isWebUSBSupported } from './dfu';
-import type { DFUProgress } from './dfu';
-import { getHubDefinition, getWebUSBFilters } from './hubTypes';
+import { flashLegoUsbDfu, isWebUSBSupported } from './dfu';
+import type { DfuProgress } from './dfu';
 import type { HubType, HubDefinition } from './hubTypes';
-import JSZip from 'jszip';
+import { getHubDefinition } from './hubTypes';
+import {
+  FirmwareReader,
+  encodeHubName,
+  metadataIsV200,
+  metadataIsV210,
+} from '@pybricks/firmware';
+import type { HubType as PybricksHubType } from '@pybricks/firmware';
 
 export interface FirmwareMetadata {
   version: string;
@@ -17,7 +25,7 @@ export interface FirmwareMetadata {
   checksum?: string;
 }
 
-export interface InstallProgress extends DFUProgress {
+export interface InstallProgress extends DfuProgress {
   step: 'downloading' | 'extracting' | 'connecting' | 'flashing' | 'complete' | 'error';
 }
 
@@ -36,17 +44,15 @@ interface FirmwareInfoResponse {
   }>;
 }
 
-/**
- * Fetch firmware metadata for a hub type from our backend
- */
+/** Fetch firmware metadata for a hub type from our backend */
 export async function getFirmwareInfo(hubType: HubType): Promise<FirmwareMetadata> {
   const response = await fetch(`${FIRMWARE_API}/info`);
   if (!response.ok) {
     throw new Error(`Failed to fetch firmware info: ${response.statusText}`);
   }
   const data: FirmwareInfoResponse = await response.json();
-  const asset = data.assets.find(a => a.hub_type === hubType);
-  
+  const asset = data.assets.find((a) => a.hub_type === hubType);
+
   return {
     version: data.version,
     hubType,
@@ -54,14 +60,11 @@ export async function getFirmwareInfo(hubType: HubType): Promise<FirmwareMetadat
   };
 }
 
-/**
- * Download firmware zip file for a hub type via our backend proxy
- */
+/** Download firmware zip file for a hub type via our backend proxy */
 export async function downloadFirmware(
   hubType: HubType,
-  onProgress?: (downloaded: number, total: number) => void
+  onProgress?: (downloaded: number, total: number) => void,
 ): Promise<ArrayBuffer> {
-  // Download via our backend proxy (avoids CORS issues with GitHub)
   const response = await fetch(`${FIRMWARE_API}/download/${hubType}`);
   if (!response.ok) {
     throw new Error(`Failed to download firmware: ${response.statusText}`);
@@ -87,7 +90,6 @@ export async function downloadFirmware(
     onProgress?.(downloaded, total);
   }
 
-  // Combine chunks
   const firmware = new Uint8Array(downloaded);
   let offset = 0;
   for (const chunk of chunks) {
@@ -98,192 +100,186 @@ export async function downloadFirmware(
   return firmware.buffer;
 }
 
-interface FirmwareMetadataJson {
-  'hub-name-offset': number;
-  'hub-name-size': number;
-  'firmware-version': string;
+function* firmwareIterator(view: DataView, maxSize: number): Generator<number> {
+  for (let i = 0; i < view.byteLength; i += 4) {
+    yield view.getUint32(i, true);
+  }
+  for (let i = view.byteLength; i < maxSize; i += 4) {
+    yield ~0;
+  }
+}
+
+function sumComplement32(data: Iterable<number>): number {
+  let total = 0;
+  for (const n of data) {
+    total += n;
+    total &= ~0;
+  }
+  return ~total + 1;
+}
+
+// Same CRC32 implementation as Pybricks Code (nibble-wise)
+const crc32Table: ReadonlyArray<number> = [
+  0x00000000, 0x04c11db7, 0x09823b6e, 0x0d4326d9, 0x130476dc, 0x17c56b6b,
+  0x1a864db2, 0x1e475005, 0x2608edb8, 0x22c9f00f, 0x2f8ad6d6, 0x2b4bcb61,
+  0x350c9b64, 0x31cd86d3, 0x3c8ea00a, 0x384fbdbd,
+];
+
+function crc32(data: Iterable<number>): number {
+  let crc = 0xffffffff;
+  for (const word of data) {
+    crc ^= word;
+    for (let i = 0; i < 8; i++) {
+      crc = (crc << 4) ^ crc32Table[crc >>> 28];
+    }
+  }
+  return crc >>> 0;
 }
 
 /**
- * Extract firmware binary from zip file
+ * Build a flashable firmware image from a Pybricks firmware zip.
+ *
+ * For SPIKE hubs, Pybricks uses metadata v2.x.
  */
-export async function extractFirmware(zipData: ArrayBuffer, hubName?: string): Promise<ArrayBuffer> {
-  const zip = await JSZip.loadAsync(zipData);
-  
-  // Find the firmware-base.bin file (Pybricks naming convention)
-  const firmwareFile = zip.file('firmware-base.bin');
-  if (!firmwareFile) {
-    throw new Error('firmware-base.bin not found in archive');
+export async function buildPybricksFirmwareFromZip(
+  zipData: ArrayBuffer,
+  hubName?: string,
+): Promise<{ firmware: Uint8Array; deviceId: PybricksHubType }>{
+  const reader = await FirmwareReader.load(zipData);
+  const firmwareBase = await reader.readFirmwareBase();
+  const metadata = await reader.readMetadata();
+
+  if (!(metadataIsV200(metadata) || metadataIsV210(metadata))) {
+    throw new Error(
+      'Unsupported Pybricks firmware metadata version. (Expected v2.x.)',
+    );
   }
 
-  const firmware = await firmwareFile.async('arraybuffer');
+  const [checksumFunc, checksumExtraLength] = (() => {
+    switch (metadata['checksum-type']) {
+      case 'sum':
+        return [sumComplement32, 4] as const;
+      case 'crc32':
+        return [crc32, 4] as const;
+      case 'none':
+        return [null, 0] as const;
+      default:
+        return [undefined, 0] as const;
+    }
+  })();
 
-  // If a custom hub name is provided, we need to patch it into the firmware
+  if (checksumFunc === undefined) {
+    throw new Error(`Unsupported checksum-type: ${String(metadata['checksum-type'])}`);
+  }
+
+  const firmware = new Uint8Array(firmwareBase.length + checksumExtraLength);
+  const firmwareView = new DataView(firmware.buffer);
+  firmware.set(firmwareBase);
+
+  // Empty string means keep the default name in the firmware.
   if (hubName && hubName.trim()) {
-    // Try to get metadata for proper patching
-    const metadataFile = zip.file('firmware.metadata.json');
-    let metadata: FirmwareMetadataJson | null = null;
-    
-    if (metadataFile) {
-      try {
-        const metadataStr = await metadataFile.async('string');
-        metadata = JSON.parse(metadataStr);
-      } catch {
-        // Ignore metadata parsing errors, fall back to search-based patching
-      }
-    }
-    
-    return patchHubName(firmware, hubName.trim(), metadata);
+    const encoded = encodeHubName(hubName.trim(), metadata);
+    firmware.set(encoded, metadata['hub-name-offset']);
   }
 
-  return firmware;
-}
-
-/**
- * Patch custom hub name into firmware
- * Uses metadata offset if available, otherwise searches for default name
- */
-function patchHubName(
-  firmware: ArrayBuffer, 
-  name: string, 
-  metadata: FirmwareMetadataJson | null
-): ArrayBuffer {
-  const encoder = new TextEncoder();
-  const patchedFirmware = new Uint8Array(firmware.slice(0));
-  
-  // Limit name to hub-name-size (default 16 characters)
-  const maxLength = metadata?.['hub-name-size'] || 16;
-  const limitedName = name.substring(0, maxLength);
-  const nameBytes = encoder.encode(limitedName);
-
-  if (metadata && metadata['hub-name-offset']) {
-    // Use metadata offset for precise patching
-    const offset = metadata['hub-name-offset'];
-    const paddedName = new Uint8Array(maxLength);
-    paddedName.set(nameBytes);
-    patchedFirmware.set(paddedName, offset);
-  } else {
-    // Fallback: Search for default name marker and replace
-    const marker = encoder.encode('Pybricks Hub');
-    
-    for (let i = 0; i < patchedFirmware.length - marker.length; i++) {
-      let found = true;
-      for (let j = 0; j < marker.length; j++) {
-        if (patchedFirmware[i + j] !== marker[j]) {
-          found = false;
-          break;
-        }
-      }
-      if (found) {
-        const paddedName = new Uint8Array(marker.length);
-        paddedName.set(nameBytes);
-        patchedFirmware.set(paddedName, i);
-        break;
-      }
-    }
+  if (checksumFunc !== null) {
+    firmwareView.setUint32(
+      firmwareBase.length,
+      checksumFunc(firmwareIterator(firmwareView, metadata['checksum-size'])),
+      true,
+    );
   }
 
-  return patchedFirmware.buffer;
+  return { firmware, deviceId: metadata['device-id'] };
 }
 
-/**
- * Request and connect to a hub in bootloader mode
- */
-export async function connectToHub(): Promise<{ device: DFUDevice; hub: HubDefinition } | null> {
+/** Request and connect to a hub in bootloader mode (USB DFU only). */
+export async function connectToHub(hubType: HubType): Promise<HubDefinition> {
   if (!isWebUSBSupported()) {
     throw new Error('WebUSB is not supported in this browser');
   }
 
-  const filters = getWebUSBFilters();
-  const device = await DFUDevice.requestDevice(filters);
-  
-  if (!device) {
-    return null; // User cancelled
-  }
-
-  await device.open();
-
-  // Try to identify the hub type from the USB device
-  // This requires access to the raw USBDevice which we need to expose
-  // For now, we'll return a generic response and let the caller specify the hub type
-  
-  return {
-    device,
-    hub: getHubDefinition('primehub'), // Default, should be overridden by user selection
-  };
+  // We don't actually connect/claim here; `flashLegoUsbDfu` will do that.
+  return getHubDefinition(hubType);
 }
 
-/**
- * Full firmware installation process
- */
+/** Full firmware installation process */
 export async function installFirmware(
   hubType: HubType,
   hubName: string | undefined,
-  onProgress: InstallProgressCallback
+  onProgress: InstallProgressCallback,
 ): Promise<void> {
-  const reportProgress = (
-    step: InstallProgress['step'],
-    state: DFUProgress['state'],
-    message: string,
-    percentage: number = 0
-  ) => {
+  const report = (p: Partial<InstallProgress> & Pick<InstallProgress, 'step' | 'message'>) => {
     onProgress({
-      step,
-      state,
-      message,
-      bytesWritten: 0,
-      totalBytes: 0,
-      percentage,
+      step: p.step,
+      phase: p.phase ?? (p.step === 'flashing' ? 'flashing' : 'connecting'),
+      bytesSent: p.bytesSent ?? 0,
+      expectedSize: p.expectedSize ?? 0,
+      percentage: p.percentage ?? 0,
+      message: p.message,
     });
   };
 
   try {
     // Step 1: Download firmware
-    reportProgress('downloading', 'preparing', 'Downloading firmware...');
+    report({ step: 'downloading', message: 'Downloading firmware…', phase: 'connecting' });
 
     const zipData = await downloadFirmware(hubType, (downloaded, total) => {
-      const pct = total > 0 ? Math.round((downloaded / total) * 100) : 0;
-      reportProgress('downloading', 'flashing', `Downloading firmware: ${pct}%`, pct);
-    });
-
-    // Step 2: Extract firmware
-    reportProgress('extracting', 'preparing', 'Extracting firmware...');
-    const firmware = await extractFirmware(zipData, hubName);
-    reportProgress('extracting', 'complete', 'Firmware extracted', 100);
-
-    // Step 3: Connect to hub
-    reportProgress('connecting', 'preparing', 'Waiting for hub connection...');
-    
-    const connection = await connectToHub();
-    if (!connection) {
-      throw new Error('No hub connected');
-    }
-
-    reportProgress('connecting', 'complete', `Connected to ${connection.device.productName}`, 100);
-
-    // Step 4: Flash firmware
-    await connection.device.flash(firmware, (dfuProgress) => {
-      onProgress({
-        ...dfuProgress,
-        step: 'flashing',
+      report({
+        step: 'downloading',
+        phase: 'connecting',
+        bytesSent: downloaded,
+        expectedSize: total,
+        percentage: total ? Math.round((downloaded / total) * 100) : 0,
+        message: total
+          ? `Downloading firmware… ${Math.round((downloaded / total) * 100)}%`
+          : 'Downloading firmware…',
       });
     });
 
-    await connection.device.close();
+    // Step 2: Build flashable firmware
+    report({ step: 'extracting', message: 'Preparing firmware…', phase: 'connecting' });
+    const { firmware } = await buildPybricksFirmwareFromZip(zipData, hubName);
 
-    reportProgress('complete', 'complete', 'Firmware installation complete! Your hub will restart automatically.', 100);
+    // Step 3: Prompt user to select hub
+    report({
+      step: 'connecting',
+      phase: 'connecting',
+      bytesSent: 0,
+      expectedSize: firmware.byteLength,
+      percentage: 0,
+      message: 'Connect your hub in update mode and select it in the browser prompt…',
+    });
+
+    // Step 4: Flash
+    const firmwareArrayBuffer = firmware.buffer.slice(
+      firmware.byteOffset,
+      firmware.byteOffset + firmware.byteLength,
+    ) as ArrayBuffer;
+
+    await flashLegoUsbDfu(hubType, firmwareArrayBuffer, (dfuProgress) => {
+      report({ step: 'flashing', ...dfuProgress, message: dfuProgress.message });
+    });
+
+    report({
+      step: 'complete',
+      phase: 'finalizing',
+      bytesSent: firmware.byteLength,
+      expectedSize: firmware.byteLength,
+      percentage: 100,
+      message: 'Firmware installation complete! Your hub will restart automatically.',
+    });
   } catch (error) {
-    reportProgress('error', 'error', `Installation failed: ${(error as Error).message}`, 0);
+    report({
+      step: 'error',
+      phase: 'finalizing',
+      message: `Installation failed: ${(error as Error).message}`,
+    });
     throw error;
   }
 }
 
-/**
- * Restore original LEGO firmware
- * This redirects to the official LEGO firmware update tool
- */
+/** Restore original LEGO firmware (not implemented natively yet). */
 export function getRestoreFirmwareUrl(_hubType?: HubType): string {
-  // LEGO's official firmware restore is done through their apps
-  // We can provide instructions or link to code.pybricks.com's restore feature
   return 'https://code.pybricks.com/';
 }
