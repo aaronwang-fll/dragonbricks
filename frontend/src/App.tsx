@@ -5,6 +5,7 @@ import { StatusBar } from './components/layout/StatusBar';
 import { EditorPanel } from './components/editor/EditorPanel';
 import { PreviewPanel } from './components/preview/PreviewPanel';
 import { SettingsPage } from './components/settings/SettingsPage';
+import { FirmwareWizard } from './components/firmware';
 
 type Page = 'main' | 'settings';
 
@@ -26,6 +27,7 @@ function App() {
         </main>
       </div>
       <StatusBar />
+      <FirmwareWizard />
     </div>
   );
 }
