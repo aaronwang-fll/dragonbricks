@@ -13,15 +13,19 @@ class ApiClient {
 
   constructor() {
     // Load token from localStorage
-    this.token = localStorage.getItem('auth_token');
+    if (typeof localStorage !== 'undefined' && typeof localStorage.getItem === 'function') {
+      this.token = localStorage.getItem('auth_token');
+    }
   }
 
   setToken(token: string | null) {
     this.token = token;
-    if (token) {
-      localStorage.setItem('auth_token', token);
-    } else {
-      localStorage.removeItem('auth_token');
+    if (typeof localStorage !== 'undefined') {
+      if (token && typeof localStorage.setItem === 'function') {
+        localStorage.setItem('auth_token', token);
+      } else if (!token && typeof localStorage.removeItem === 'function') {
+        localStorage.removeItem('auth_token');
+      }
     }
   }
 
@@ -29,10 +33,7 @@ class ApiClient {
     return this.token;
   }
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...(options.headers as Record<string, string>),
@@ -174,7 +175,11 @@ class ApiClient {
   }
 
   // Sharing
-  async shareProgram(programId: string, userEmail: string, permission: 'view' | 'comment' | 'edit' = 'view') {
+  async shareProgram(
+    programId: string,
+    userEmail: string,
+    permission: 'view' | 'comment' | 'edit' = 'view',
+  ) {
     return this.request<ProgramShare>(`/programs/${programId}/shares`, {
       method: 'POST',
       body: JSON.stringify({ user_email: userEmail, permission }),
@@ -210,6 +215,14 @@ class ApiClient {
     return this.request<ValidateResponse>('/parser/validate', {
       method: 'POST',
       body: JSON.stringify({ command }),
+    });
+  }
+
+  // LLM parsing endpoint (auth required)
+  async llmParse(command: string, context?: LlmParseRequest['context']) {
+    return this.request<LlmParseResponse>('/llm/parse', {
+      method: 'POST',
+      body: JSON.stringify({ command, context }),
     });
   }
 }
@@ -389,6 +402,24 @@ export interface ValidateResponse {
   valid: boolean;
   error?: string;
   needs_clarification?: ClarificationRequest;
+}
+
+// LLM parsing types
+export interface LlmParseRequest {
+  command: string;
+  context?: {
+    config?: RobotConfig;
+    routines?: RoutineInput[];
+    previous_commands?: string[];
+  };
+}
+
+export interface LlmParseResponse {
+  success: boolean;
+  python_code?: string;
+  error?: string;
+  command_type?: string;
+  confidence?: number;
 }
 
 // Export singleton instance

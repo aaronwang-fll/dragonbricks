@@ -17,6 +17,7 @@ export function PreviewPanel() {
     startPosition,
     isPlaying,
     playbackSpeed,
+    estimatedTime,
     setIsOpen,
     setIsExpanded,
     setFieldImage,
@@ -50,7 +51,7 @@ export function PreviewPanel() {
 
   // Sync estimated time to store when path changes
   useEffect(() => {
-    setEstimatedTime(calculatedPath ? calculatedPath.totalTime / 1000 : 0);
+    setEstimatedTime(calculatedPath ? calculatedPath.totalTime : 0);
   }, [calculatedPath, setEstimatedTime]);
 
   // Theme-aware colors
@@ -236,6 +237,8 @@ export function PreviewPanel() {
     return seconds.toFixed(1) + 's';
   };
 
+  const formatEstimatedTime = (ms: number) => `~${(ms / 1000).toFixed(1)} sec`;
+
   const panelWidth = isExpanded ? 500 : 280;
   const canvasHeight = isExpanded ? 400 : 200;
 
@@ -260,7 +263,14 @@ export function PreviewPanel() {
     >
       {/* Header */}
       <div className="flex items-center justify-between px-2 py-1.5 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-        <span className="text-xs font-semibold text-gray-300 uppercase">Preview</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-gray-300 uppercase">Preview</span>
+          {estimatedTime > 0 && (
+            <span className="text-[10px] text-gray-500 dark:text-gray-400">
+              {formatEstimatedTime(estimatedTime)}
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setIsExpanded(!isExpanded)}

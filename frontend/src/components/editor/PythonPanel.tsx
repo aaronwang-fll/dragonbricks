@@ -1,13 +1,28 @@
 import { useState } from 'react';
 import { useParser } from '../../hooks/useParser';
+import { useEditorStore } from '../../stores/editorStore';
 
 export function PythonPanel() {
-  const { generatedCode } = useParser();
+  const { generateFullProgram } = useParser();
+  const currentProgram = useEditorStore((state) => state.currentProgram);
   const [copied, setCopied] = useState(false);
 
+  const generatedCode = generateFullProgram();
   const code = generatedCode || `# No commands yet
 # Enter commands in the Main section
 # Example: "move forward 200mm"`;
+
+  const sanitizeFilename = (name?: string): string => {
+    if (!name) return '';
+
+    return name
+      .trim()
+      .replace(/\.py$/i, '')
+      .replace(/\s+/g, '_')
+      .replace(/[^A-Za-z0-9_-]/g, '')
+      .replace(/_+/g, '_')
+      .replace(/^[_-]+|[_-]+$/g, '');
+  };
 
   const handleCopy = async () => {
     try {
@@ -28,12 +43,15 @@ export function PythonPanel() {
   };
 
   const handleDownload = () => {
+    const filename = sanitizeFilename(currentProgram?.name) || 'main';
     const blob = new Blob([code], { type: 'text/x-python' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'main.py';
+    a.download = `${filename}.py`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
