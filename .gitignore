@@ -34,8 +34,10 @@ __pycache__/
 *.sln
 *.sw?
 
-# Playwright MCP screenshots
+# Playwright
 .playwright-mcp/
+frontend/test-results/
+frontend/playwright-report/
 
 # Claude Code session files
 claude-progress.txt

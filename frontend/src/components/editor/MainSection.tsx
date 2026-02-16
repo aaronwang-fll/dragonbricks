@@ -1,14 +1,18 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useEditorStore } from '../../stores/editorStore';
 import { useParser } from '../../hooks/useParser';
-import { Autocomplete, useAutocomplete } from './Autocomplete';
+import { Autocomplete } from './Autocomplete';
+import { useAutocomplete } from './useAutocomplete';
 
 interface MainSectionProps {
-  onClarificationNeeded?: (commandId: string, clarification: {
-    field: string;
-    message: string;
-    type: 'distance' | 'angle' | 'duration';
-  }) => void;
+  onClarificationNeeded?: (
+    commandId: string,
+    clarification: {
+      field: string;
+      message: string;
+      type: 'distance' | 'angle' | 'duration';
+    },
+  ) => void;
 }
 
 export function MainSection({ onClarificationNeeded }: MainSectionProps) {
@@ -23,41 +27,39 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { isOpen: autocompleteOpen, position: autocompletePosition, showAutocomplete, hideAutocomplete } = useAutocomplete();
-  const isExternalUpdate = useRef(false);
-
-  // Sync lines FROM store when currentProgram.mainSection changes externally
-  useEffect(() => {
-    if (!currentProgram) return;
-    const storeContent = currentProgram.mainSection || '';
+  const {
+    isOpen: autocompleteOpen,
+    position: autocompletePosition,
+    showAutocomplete,
+    hideAutocomplete,
+  } = useAutocomplete();
+  // Sync lines FROM store when mainSection changes externally (render-time state adjustment)
+  const [prevMainSection, setPrevMainSection] = useState(currentProgram?.mainSection);
+  if (currentProgram?.mainSection !== prevMainSection) {
+    setPrevMainSection(currentProgram?.mainSection);
+    // Only update lines if the store content differs from local lines
+    const storeContent = currentProgram?.mainSection || '';
     const localContent = lines.join('\n');
-
-    // Only update if content differs and it's not from our own changes
-    if (storeContent !== localContent && !isExternalUpdate.current) {
-      const newLines = storeContent ? storeContent.split('\n') : [''];
-      setLines(newLines);
+    if (storeContent !== localContent) {
+      setLines(storeContent ? storeContent.split('\n') : ['']);
     }
-    isExternalUpdate.current = false;
-  }, [currentProgram?.mainSection]);
+  }
 
   // Sync lines TO store when local lines change
   useEffect(() => {
     if (!currentProgram) return;
     const content = lines.join('\n');
     if (content !== (currentProgram.mainSection || '')) {
-      isExternalUpdate.current = true;
       updateProgram(currentProgram.id, { mainSection: content });
     }
-  }, [lines, currentProgram?.id]);
+  }, [lines, currentProgram, updateProgram]);
 
   // Auto-add empty line at the end when last line has content
-  useEffect(() => {
-    if (lines.length === 0) return;
-    const lastLine = lines[lines.length - 1];
-    if (lastLine && lastLine.trim() !== '') {
-      setLines(prev => [...prev, '']);
-    }
-  }, [lines]);
+  // Uses render-time check to avoid setState-in-effect
+  const lastLine = lines.length > 0 ? lines[lines.length - 1] : '';
+  if (lastLine && lastLine.trim() !== '') {
+    setLines((prev) => [...prev, '']);
+  }
 
   // Parse all lines with debounce
   useEffect(() => {
@@ -80,7 +82,10 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
   }, [lines, parseInput]);
 
   // Auto-expand Python code for lines that need clarification or have errors
-  useEffect(() => {
+  // Uses render-time state adjustment (React-recommended pattern)
+  const [prevCommands, setPrevCommands] = useState(commands);
+  if (commands !== prevCommands) {
+    setPrevCommands(commands);
     const linesToExpand = new Set<number>();
     commands.forEach((cmd, index) => {
       if (cmd.status === 'needs-clarification' || cmd.status === 'error') {
@@ -88,40 +93,46 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
       }
     });
     if (linesToExpand.size > 0) {
-      setExpandedLines(prev => {
+      setExpandedLines((prev) => {
         const newSet = new Set(prev);
-        linesToExpand.forEach(i => newSet.add(i));
+        linesToExpand.forEach((i) => newSet.add(i));
         return newSet;
       });
     }
-  }, [commands]);
+  }
 
-  const handleLineChange = useCallback((index: number, value: string) => {
-    setLines(prev => {
-      const newLines = [...prev];
-      newLines[index] = value;
-      return newLines;
-    });
-    hideAutocomplete(); // Close autocomplete when typing
-  }, [hideAutocomplete]);
+  const handleLineChange = useCallback(
+    (index: number, value: string) => {
+      setLines((prev) => {
+        const newLines = [...prev];
+        newLines[index] = value;
+        return newLines;
+      });
+      hideAutocomplete(); // Close autocomplete when typing
+    },
+    [hideAutocomplete],
+  );
 
-  const handleAutocompleteSelect = useCallback((newValue: string, newCursorPos: number) => {
-    // The autocomplete works with full text, so we need to update just the active line
-    setLines(prev => {
-      const newLines = [...prev];
-      newLines[activeLineIndex] = newValue;
-      return newLines;
-    });
-    hideAutocomplete();
-    // Focus and set cursor position
-    setTimeout(() => {
-      const input = inputRefs.current[activeLineIndex];
-      if (input) {
-        input.focus();
-        input.setSelectionRange(newCursorPos, newCursorPos);
-      }
-    }, 0);
-  }, [activeLineIndex, hideAutocomplete]);
+  const handleAutocompleteSelect = useCallback(
+    (newValue: string, newCursorPos: number) => {
+      // The autocomplete works with full text, so we need to update just the active line
+      setLines((prev) => {
+        const newLines = [...prev];
+        newLines[activeLineIndex] = newValue;
+        return newLines;
+      });
+      hideAutocomplete();
+      // Focus and set cursor position
+      setTimeout(() => {
+        const input = inputRefs.current[activeLineIndex];
+        if (input) {
+          input.focus();
+          input.setSelectionRange(newCursorPos, newCursorPos);
+        }
+      }, 0);
+    },
+    [activeLineIndex, hideAutocomplete],
+  );
 
   const handleInputClick = useCallback((index: number, e: React.MouseEvent<HTMLInputElement>) => {
     const input = e.currentTarget;
@@ -129,68 +140,68 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
     setActiveLineIndex(index);
   }, []);
 
-  const handleKeyDown = useCallback((index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Ctrl+Space to show autocomplete
-    if (e.ctrlKey && e.key === ' ') {
-      e.preventDefault();
-      const input = inputRefs.current[index];
-      if (input && containerRef.current) {
-        const rect = input.getBoundingClientRect();
-        const containerRect = containerRef.current.getBoundingClientRect();
-        showAutocomplete(
-          rect.left - containerRect.left,
-          rect.bottom - containerRect.top + 4
-        );
-        setActiveLineIndex(index);
-        setCursorPosition(input.selectionStart || 0);
+  const handleKeyDown = useCallback(
+    (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+      // Ctrl+Space to show autocomplete
+      if (e.ctrlKey && e.key === ' ') {
+        e.preventDefault();
+        const input = inputRefs.current[index];
+        if (input && containerRef.current) {
+          const rect = input.getBoundingClientRect();
+          const containerRect = containerRef.current.getBoundingClientRect();
+          showAutocomplete(rect.left - containerRect.left, rect.bottom - containerRect.top + 4);
+          setActiveLineIndex(index);
+          setCursorPosition(input.selectionStart || 0);
+        }
+        return;
       }
-      return;
-    }
 
-    // Close autocomplete on Escape
-    if (e.key === 'Escape' && autocompleteOpen) {
-      e.preventDefault();
-      hideAutocomplete();
-      return;
-    }
+      // Close autocomplete on Escape
+      if (e.key === 'Escape' && autocompleteOpen) {
+        e.preventDefault();
+        hideAutocomplete();
+        return;
+      }
 
-    // Let autocomplete handle arrow keys when open
-    if (autocompleteOpen && ['ArrowUp', 'ArrowDown', 'Tab', 'Enter'].includes(e.key)) {
-      return; // Autocomplete will handle these
-    }
+      // Let autocomplete handle arrow keys when open
+      if (autocompleteOpen && ['ArrowUp', 'ArrowDown', 'Tab', 'Enter'].includes(e.key)) {
+        return; // Autocomplete will handle these
+      }
 
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      hideAutocomplete();
-      // Add new line after current
-      setLines(prev => {
-        const newLines = [...prev];
-        newLines.splice(index + 1, 0, '');
-        return newLines;
-      });
-      // Focus new line
-      setTimeout(() => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        hideAutocomplete();
+        // Add new line after current
+        setLines((prev) => {
+          const newLines = [...prev];
+          newLines.splice(index + 1, 0, '');
+          return newLines;
+        });
+        // Focus new line
+        setTimeout(() => {
+          inputRefs.current[index + 1]?.focus();
+        }, 0);
+      } else if (e.key === 'Backspace' && lines[index] === '' && lines.length > 1) {
+        e.preventDefault();
+        // Remove empty line
+        setLines((prev) => prev.filter((_, i) => i !== index));
+        // Focus previous line
+        setTimeout(() => {
+          inputRefs.current[Math.max(0, index - 1)]?.focus();
+        }, 0);
+      } else if (e.key === 'ArrowUp' && index > 0 && !autocompleteOpen) {
+        e.preventDefault();
+        inputRefs.current[index - 1]?.focus();
+      } else if (e.key === 'ArrowDown' && index < lines.length - 1 && !autocompleteOpen) {
+        e.preventDefault();
         inputRefs.current[index + 1]?.focus();
-      }, 0);
-    } else if (e.key === 'Backspace' && lines[index] === '' && lines.length > 1) {
-      e.preventDefault();
-      // Remove empty line
-      setLines(prev => prev.filter((_, i) => i !== index));
-      // Focus previous line
-      setTimeout(() => {
-        inputRefs.current[Math.max(0, index - 1)]?.focus();
-      }, 0);
-    } else if (e.key === 'ArrowUp' && index > 0 && !autocompleteOpen) {
-      e.preventDefault();
-      inputRefs.current[index - 1]?.focus();
-    } else if (e.key === 'ArrowDown' && index < lines.length - 1 && !autocompleteOpen) {
-      e.preventDefault();
-      inputRefs.current[index + 1]?.focus();
-    }
-  }, [lines, autocompleteOpen, showAutocomplete, hideAutocomplete]);
+      }
+    },
+    [lines, autocompleteOpen, showAutocomplete, hideAutocomplete],
+  );
 
   const toggleLine = useCallback((index: number) => {
-    setExpandedLines(prev => {
+    setExpandedLines((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(index)) {
         newSet.delete(index);
@@ -206,50 +217,74 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
       setExpandedLines(new Set());
       setAllExpanded(false);
     } else {
-      const allIndices = new Set(lines.map((_, i) => i).filter(i => lines[i]?.trim()));
+      const allIndices = new Set(lines.map((_, i) => i).filter((i) => lines[i]?.trim()));
       setExpandedLines(allIndices);
       setAllExpanded(true);
     }
   }, [allExpanded, lines]);
 
-  const handleLineClick = useCallback((index: number) => {
-    const cmd = commands[index];
-    if (cmd?.status === 'needs-clarification' && cmd.clarification && onClarificationNeeded) {
-      onClarificationNeeded(cmd.id, cmd.clarification);
-    }
-  }, [commands, onClarificationNeeded]);
+  const handleLineClick = useCallback(
+    (index: number) => {
+      const cmd = commands[index];
+      if (cmd?.status === 'needs-clarification' && cmd.clarification && onClarificationNeeded) {
+        onClarificationNeeded(cmd.id, cmd.clarification);
+      }
+    },
+    [commands, onClarificationNeeded],
+  );
 
   const getStatusIcon = useCallback((status: string) => {
     switch (status) {
       case 'parsed':
-        return <span className="text-green-500 text-xs" title="Parsed">✓</span>;
+        return (
+          <span className="text-green-500 text-xs" title="Parsed">
+            ✓
+          </span>
+        );
       case 'needs-clarification':
-        return <span className="text-yellow-500 text-xs" title="Needs input">?</span>;
+        return (
+          <span className="text-yellow-500 text-xs" title="Needs input">
+            ?
+          </span>
+        );
       case 'error':
-        return <span className="text-red-500 text-xs" title="Error">!</span>;
+        return (
+          <span className="text-red-500 text-xs" title="Error">
+            !
+          </span>
+        );
       default:
         return <span className="text-gray-500 dark:text-gray-600 text-xs">○</span>;
     }
   }, []);
 
-  const getLineStatus = useCallback((index: number) => {
-    const cmd = commands[index];
-    return cmd ? cmd.status : 'pending';
-  }, [commands]);
+  const getLineStatus = useCallback(
+    (index: number) => {
+      const cmd = commands[index];
+      return cmd ? cmd.status : 'pending';
+    },
+    [commands],
+  );
 
-  const getPythonCode = useCallback((index: number) => {
-    const cmd = commands[index];
-    if (cmd?.pythonCode) return cmd.pythonCode;
-    if (cmd?.error) return `# ${cmd.error}`;
-    if (cmd?.status === 'needs-clarification') return cmd.clarification?.message || 'More info needed';
-    return '';
-  }, [commands]);
+  const getPythonCode = useCallback(
+    (index: number) => {
+      const cmd = commands[index];
+      if (cmd?.pythonCode) return cmd.pythonCode;
+      if (cmd?.error) return `# ${cmd.error}`;
+      if (cmd?.status === 'needs-clarification')
+        return cmd.clarification?.message || 'More info needed';
+      return '';
+    },
+    [commands],
+  );
 
   // Generate full Python code for export
   const generateFullCode = useCallback(() => {
     const codeLines: string[] = [];
     codeLines.push('from pybricks.hubs import PrimeHub');
-    codeLines.push('from pybricks.pupdevices import Motor, ColorSensor, UltrasonicSensor, ForceSensor');
+    codeLines.push(
+      'from pybricks.pupdevices import Motor, ColorSensor, UltrasonicSensor, ForceSensor',
+    );
     codeLines.push('from pybricks.parameters import Port, Direction, Stop, Color');
     codeLines.push('from pybricks.robotics import DriveBase');
     codeLines.push('from pybricks.tools import wait, StopWatch');
@@ -262,7 +297,9 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
     codeLines.push('right_motor = Motor(Port.B)');
     codeLines.push('');
     codeLines.push('# DriveBase');
-    codeLines.push(`robot = DriveBase(left_motor, right_motor, wheel_diameter=${defaults.wheelDiameter}, axle_track=${defaults.axleTrack})`);
+    codeLines.push(
+      `robot = DriveBase(left_motor, right_motor, wheel_diameter=${defaults.wheelDiameter}, axle_track=${defaults.axleTrack})`,
+    );
     codeLines.push('');
     codeLines.push('# Main program');
     commands.forEach((cmd) => {
@@ -302,13 +339,16 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
     URL.revokeObjectURL(url);
   }, [generateFullCode]);
 
-  const parsedCount = commands.filter(c => c.status === 'parsed').length;
-  const needsInputCount = commands.filter(c => c.status === 'needs-clarification').length;
-  const errorCount = commands.filter(c => c.status === 'error').length;
-  const hasContent = lines.some(l => l.trim());
+  const parsedCount = commands.filter((c) => c.status === 'parsed').length;
+  const needsInputCount = commands.filter((c) => c.status === 'needs-clarification').length;
+  const errorCount = commands.filter((c) => c.status === 'error').length;
+  const hasContent = lines.some((l) => l.trim());
 
   return (
-    <div ref={containerRef} className="flex-1 flex flex-col bg-white dark:bg-gray-900 overflow-hidden relative">
+    <div
+      ref={containerRef}
+      className="flex-1 flex flex-col bg-white dark:bg-gray-900 overflow-hidden relative"
+    >
       {/* Header with expand all and export options */}
       <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-3 text-xs text-gray-400">
@@ -339,12 +379,27 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                 title={copied ? 'Copied!' : 'Copy full Python code'}
               >
                 {copied ? (
-                  <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  <svg
+                    className="w-4 h-4 text-green-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                 ) : (
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                    />
                   </svg>
                 )}
               </button>
@@ -354,7 +409,12 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                 title="Download as .py file"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                  />
                 </svg>
               </button>
               <span className="text-gray-600">|</span>
@@ -398,13 +458,17 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
 
                 {/* Natural language input */}
                 <input
-                  ref={el => { inputRefs.current[index] = el; }}
+                  ref={(el) => {
+                    inputRefs.current[index] = el;
+                  }}
                   type="text"
                   value={line}
                   onChange={(e) => handleLineChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   onClick={(e) => handleInputClick(index, e)}
-                  placeholder={index === 0 && !line ? 'Type command... (Ctrl+Space for suggestions)' : ''}
+                  placeholder={
+                    index === 0 && !line ? 'Type command... (Ctrl+Space for suggestions)' : ''
+                  }
                   className="flex-1 bg-transparent text-sm font-mono text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 py-2 pl-1 pr-2 outline-none border-0 min-w-[120px]"
                   spellCheck={false}
                 />
@@ -422,14 +486,19 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
 
                 {/* Python code - right aligned, wraps if needed */}
                 {hasCode && isExpanded && (
-                  <span className={`text-xs font-mono px-2 py-1 ml-auto flex-shrink-0 max-w-full ${
-                    status === 'needs-clarification' ? 'text-yellow-600 dark:text-yellow-400' :
-                    status === 'error' ? 'text-red-500 dark:text-red-400' :
-                    'text-gray-500 dark:text-gray-400'
-                  }`}>
+                  <span
+                    className={`text-xs font-mono px-2 py-1 ml-auto flex-shrink-0 max-w-full ${
+                      status === 'needs-clarification'
+                        ? 'text-yellow-600 dark:text-yellow-400'
+                        : status === 'error'
+                          ? 'text-red-500 dark:text-red-400'
+                          : 'text-gray-500 dark:text-gray-400'
+                    }`}
+                  >
                     {pythonCode.split('\n').map((codeLine, i) => (
                       <span key={i}>
-                        {codeLine}{i < pythonCode.split('\n').length - 1 ? ' | ' : ''}
+                        {codeLine}
+                        {i < pythonCode.split('\n').length - 1 ? ' | ' : ''}
                       </span>
                     ))}
                   </span>
@@ -448,9 +517,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
             <p className="text-xs text-gray-700">
               Examples: move forward 200mm • turn right 90 degrees • wait 1 second
             </p>
-            <p className="text-xs text-gray-500 mt-2">
-              Press Ctrl+Space for suggestions
-            </p>
+            <p className="text-xs text-gray-500 mt-2">Press Ctrl+Space for suggestions</p>
           </div>
         </div>
       )}

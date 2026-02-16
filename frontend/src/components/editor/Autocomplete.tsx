@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../../lib/api';
 import type { Suggestion } from '../../lib/api';
 
@@ -20,91 +20,108 @@ export function Autocomplete({
   position,
 }: AutocompleteProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [loading, setLoading] = useState(false);
+  // null = loading, empty array = no results
+  const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
+  const fetchIdRef = useRef(0);
+
+  // Reset suggestions when becoming invisible (render-time state adjustment)
+  const [prevVisible, setPrevVisible] = useState(visible);
+  if (visible !== prevVisible) {
+    setPrevVisible(visible);
+    if (!visible) {
+      setSuggestions(null);
+    }
+  }
 
   useEffect(() => {
-    if (visible && value.trim()) {
-      setLoading(true);
-      api.getAutocompleteSuggestions(value, cursorPosition)
-        .then(response => {
+    if (!visible || !value.trim()) return;
+
+    const fetchId = ++fetchIdRef.current;
+
+    api
+      .getAutocompleteSuggestions(value, cursorPosition)
+      .then((response) => {
+        if (fetchId === fetchIdRef.current) {
           setSuggestions(response.suggestions);
           setSelectedIndex(0);
-        })
-        .catch(() => {
-          setSuggestions([]);
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    } else {
-      setSuggestions([]);
-    }
+        }
+      })
+      .catch(() => {
+        if (fetchId === fetchIdRef.current) setSuggestions([]);
+      });
   }, [value, cursorPosition, visible]);
 
-  const handleSelect = useCallback((suggestion: Suggestion) => {
-    // Get current line and word being typed
-    const lines = value.split('\n');
-    let charCount = 0;
-    let lineIndex = 0;
+  const handleSelect = useCallback(
+    (suggestion: Suggestion) => {
+      const lines = value.split('\n');
+      let charCount = 0;
+      let lineIndex = 0;
 
-    for (let i = 0; i < lines.length; i++) {
-      if (charCount + lines[i].length >= cursorPosition) {
-        lineIndex = i;
-        break;
+      for (let i = 0; i < lines.length; i++) {
+        if (charCount + lines[i].length >= cursorPosition) {
+          lineIndex = i;
+          break;
+        }
+        charCount += lines[i].length + 1;
       }
-      charCount += lines[i].length + 1; // +1 for newline
-    }
 
-    const currentLine = lines[lineIndex];
-    const posInLine = cursorPosition - charCount;
+      const currentLine = lines[lineIndex];
+      const posInLine = cursorPosition - charCount;
 
-    // Find the word being typed (last word before cursor)
-    const beforeCursor = currentLine.slice(0, posInLine);
-    const words = beforeCursor.split(' ');
-    const lastWord = words[words.length - 1];
+      const beforeCursor = currentLine.slice(0, posInLine);
+      const words = beforeCursor.split(' ');
+      const lastWord = words[words.length - 1];
 
-    // Replace the partial word with the suggestion
-    const newLine = currentLine.slice(0, posInLine - lastWord.length) + suggestion.text + currentLine.slice(posInLine);
-    lines[lineIndex] = newLine;
+      const newLine =
+        currentLine.slice(0, posInLine - lastWord.length) +
+        suggestion.text +
+        currentLine.slice(posInLine);
+      lines[lineIndex] = newLine;
 
-    const newValue = lines.join('\n');
-    const newCursorPosition = cursorPosition - lastWord.length + suggestion.text.length;
+      const newValue = lines.join('\n');
+      const newCursorPosition = cursorPosition - lastWord.length + suggestion.text.length;
 
-    onSelect(newValue, newCursorPosition);
-    onClose();
-  }, [value, cursorPosition, onSelect, onClose]);
+      onSelect(newValue, newCursorPosition);
+      onClose();
+    },
+    [value, cursorPosition, onSelect, onClose],
+  );
 
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (!visible || suggestions.length === 0) return;
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (!visible || !suggestions || suggestions.length === 0) return;
 
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setSelectedIndex(prev => (prev + 1) % suggestions.length);
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        setSelectedIndex(prev => (prev - 1 + suggestions.length) % suggestions.length);
-        break;
-      case 'Enter':
-      case 'Tab':
-        e.preventDefault();
-        handleSelect(suggestions[selectedIndex]);
-        break;
-      case 'Escape':
-        e.preventDefault();
-        onClose();
-        break;
-    }
-  }, [visible, suggestions, selectedIndex, handleSelect, onClose]);
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setSelectedIndex((prev) => (prev + 1) % suggestions.length);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setSelectedIndex((prev) => (prev - 1 + suggestions.length) % suggestions.length);
+          break;
+        case 'Enter':
+        case 'Tab':
+          e.preventDefault();
+          handleSelect(suggestions[selectedIndex]);
+          break;
+        case 'Escape':
+          e.preventDefault();
+          onClose();
+          break;
+      }
+    },
+    [visible, suggestions, selectedIndex, handleSelect, onClose],
+  );
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  if (!visible || (suggestions.length === 0 && !loading)) return null;
+  const loading = suggestions === null;
+
+  if (!visible || (!loading && suggestions.length === 0)) return null;
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -158,10 +175,14 @@ export function Autocomplete({
               `}
             >
               <div>
-                <div className="text-sm font-mono text-gray-800 dark:text-white">{suggestion.text}</div>
+                <div className="text-sm font-mono text-gray-800 dark:text-white">
+                  {suggestion.text}
+                </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">{suggestion.label}</div>
               </div>
-              <span className={`text-xs px-1.5 py-0.5 rounded ${getCategoryColor(suggestion.category)}`}>
+              <span
+                className={`text-xs px-1.5 py-0.5 rounded ${getCategoryColor(suggestion.category)}`}
+              >
                 {suggestion.category}
               </span>
             </li>
@@ -170,26 +191,4 @@ export function Autocomplete({
       )}
     </div>
   );
-}
-
-// Hook for managing autocomplete state
-export function useAutocomplete() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-
-  const showAutocomplete = useCallback((x: number, y: number) => {
-    setPosition({ x, y });
-    setIsOpen(true);
-  }, []);
-
-  const hideAutocomplete = useCallback(() => {
-    setIsOpen(false);
-  }, []);
-
-  return {
-    isOpen,
-    position,
-    showAutocomplete,
-    hideAutocomplete,
-  };
 }

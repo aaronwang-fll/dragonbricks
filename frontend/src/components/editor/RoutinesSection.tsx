@@ -1,10 +1,10 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useEditorStore } from '../../stores/editorStore';
 import type { Routine } from '../../types';
 
 export function RoutinesSection() {
   const { currentProgram, showRoutines, setShowRoutines, updateProgram } = useEditorStore();
-  const routines = currentProgram?.routines || [];
+  const routines = useMemo(() => currentProgram?.routines || [], [currentProgram?.routines]);
   const [expandedRoutine, setExpandedRoutine] = useState<string | null>(null);
   const [editingRoutine, setEditingRoutine] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -50,62 +50,74 @@ export function RoutinesSection() {
     setEditValue(newRoutine.body);
   }, [currentProgram, routines, updateProgram]);
 
-  const handleDeleteRoutine = useCallback((routineId: string) => {
-    if (!currentProgram) return;
+  const handleDeleteRoutine = useCallback(
+    (routineId: string) => {
+      if (!currentProgram) return;
 
-    updateProgram(currentProgram.id, {
-      routines: routines.filter(r => r.id !== routineId),
-    });
-  }, [currentProgram, routines, updateProgram]);
+      updateProgram(currentProgram.id, {
+        routines: routines.filter((r) => r.id !== routineId),
+      });
+    },
+    [currentProgram, routines, updateProgram],
+  );
 
-  const handleSaveRoutine = useCallback((routineId: string) => {
-    if (!currentProgram) return;
+  const handleSaveRoutine = useCallback(
+    (routineId: string) => {
+      if (!currentProgram) return;
 
-    updateProgram(currentProgram.id, {
-      routines: routines.map(r =>
-        r.id === routineId ? { ...r, body: editValue } : r
-      ),
-    });
+      updateProgram(currentProgram.id, {
+        routines: routines.map((r) => (r.id === routineId ? { ...r, body: editValue } : r)),
+      });
 
-    setEditingRoutine(null);
-  }, [currentProgram, routines, editValue, updateProgram]);
+      setEditingRoutine(null);
+    },
+    [currentProgram, routines, editValue, updateProgram],
+  );
 
-  const handleRenameRoutine = useCallback((routineId: string, newName: string) => {
-    if (!currentProgram) return;
+  const handleRenameRoutine = useCallback(
+    (routineId: string, newName: string) => {
+      if (!currentProgram) return;
 
-    // Sanitize name: lowercase, replace spaces with underscores, alphanumeric only
-    const sanitized = newName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+      // Sanitize name: lowercase, replace spaces with underscores, alphanumeric only
+      const sanitized = newName
+        .toLowerCase()
+        .replace(/\s+/g, '_')
+        .replace(/[^a-z0-9_]/g, '');
 
-    if (!sanitized) return;
+      if (!sanitized) return;
 
-    updateProgram(currentProgram.id, {
-      routines: routines.map(r =>
-        r.id === routineId ? { ...r, name: sanitized } : r
-      ),
-    });
-  }, [currentProgram, routines, updateProgram]);
+      updateProgram(currentProgram.id, {
+        routines: routines.map((r) => (r.id === routineId ? { ...r, name: sanitized } : r)),
+      });
+    },
+    [currentProgram, routines, updateProgram],
+  );
 
-  const handleUpdateParameters = useCallback((routineId: string, paramsStr: string) => {
-    if (!currentProgram) return;
+  const handleUpdateParameters = useCallback(
+    (routineId: string, paramsStr: string) => {
+      if (!currentProgram) return;
 
-    const parameters = paramsStr
-      .split(',')
-      .map(p => p.trim().toLowerCase().replace(/\s+/g, '_'))
-      .filter(Boolean);
+      const parameters = paramsStr
+        .split(',')
+        .map((p) => p.trim().toLowerCase().replace(/\s+/g, '_'))
+        .filter(Boolean);
 
-    updateProgram(currentProgram.id, {
-      routines: routines.map(r =>
-        r.id === routineId ? { ...r, parameters } : r
-      ),
-    });
-  }, [currentProgram, routines, updateProgram]);
+      updateProgram(currentProgram.id, {
+        routines: routines.map((r) => (r.id === routineId ? { ...r, parameters } : r)),
+      });
+    },
+    [currentProgram, routines, updateProgram],
+  );
 
   const toggleRoutine = useCallback((routineId: string) => {
-    setExpandedRoutine(prev => prev === routineId ? null : routineId);
+    setExpandedRoutine((prev) => (prev === routineId ? null : routineId));
   }, []);
 
   return (
-    <div ref={sectionRef} className="bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 h-full overflow-y-auto flex flex-col">
+    <div
+      ref={sectionRef}
+      className="bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 h-full overflow-y-auto flex flex-col"
+    >
       <button
         onClick={() => setShowRoutines(!showRoutines)}
         className="w-full px-3 py-2 flex items-center justify-between text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -136,11 +148,11 @@ export function RoutinesSection() {
             <div className="text-sm text-gray-400 italic py-2">
               <p>No routines defined.</p>
               <p className="mt-1 text-xs">
-                Routines are reusable command sequences.
-                Click "+ Add" to create one, or type in the editor:
+                Routines are reusable command sequences. Click "+ Add" to create one, or type in the
+                editor:
               </p>
               <pre className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono text-gray-600 dark:text-gray-300">
-{`Define turn_around:
+                {`Define turn_around:
   turn right 180 degrees
 
 Define square with size:
@@ -207,7 +219,9 @@ Define square with size:
                           />
                         </div>
                         <div>
-                          <label className="text-xs text-gray-400 block mb-1">Parameters (comma-separated)</label>
+                          <label className="text-xs text-gray-400 block mb-1">
+                            Parameters (comma-separated)
+                          </label>
                           <input
                             type="text"
                             value={routine.parameters.join(', ')}
@@ -264,15 +278,25 @@ Define square with size:
 
                       {/* Usage hint */}
                       <div className="mt-2 text-xs text-gray-400 bg-blue-900/30 p-2 rounded">
-                        <strong>Usage:</strong> Type <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{routine.name}</code>
+                        <strong>Usage:</strong> Type{' '}
+                        <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">
+                          {routine.name}
+                        </code>
                         {routine.parameters.length > 0 && (
-                          <> with {routine.parameters.map((p, i) => (
-                            <span key={p}>
-                              <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{p}</code>
-                              {i < routine.parameters.length - 1 ? ', ' : ''}
-                            </span>
-                          ))}</>
-                        )} in your commands.
+                          <>
+                            {' '}
+                            with{' '}
+                            {routine.parameters.map((p, i) => (
+                              <span key={p}>
+                                <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">
+                                  {p}
+                                </code>
+                                {i < routine.parameters.length - 1 ? ', ' : ''}
+                              </span>
+                            ))}
+                          </>
+                        )}{' '}
+                        in your commands.
                       </div>
                     </div>
                   )}

@@ -1,9 +1,13 @@
-import { useRef, useEffect, useCallback, useState } from 'react';
+import { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import { usePreviewStore } from '../../stores/previewStore';
 import { useEditorStore } from '../../stores/editorStore';
 import { useThemeStore } from '../../stores/themeStore';
-import { calculatePath, generatePathPoints, getPositionAtTime } from '../../lib/preview/pathCalculator';
-import type { CalculatedPath, PathPoint } from '../../lib/preview/pathCalculator';
+import {
+  calculatePath,
+  generatePathPoints,
+  getPositionAtTime,
+} from '../../lib/preview/pathCalculator';
+import type { PathPoint } from '../../lib/preview/pathCalculator';
 
 export function PreviewPanel() {
   const {
@@ -28,38 +32,41 @@ export function PreviewPanel() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const animationRef = useRef<number | null>(null);
 
-  const [calculatedPath, setCalculatedPath] = useState<CalculatedPath | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
-  const [pathPoints, setPathPoints] = useState<PathPoint[]>([]);
 
-  // Theme-aware colors
-  const isDark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  const colors = {
-    grid: isDark ? '#374151' : '#e5e7eb',
-    path: '#3b82f6',
-    start: '#22c55e',
-    current: '#3b82f6',
-    end: '#ef4444',
-  };
-
-  // Calculate path when commands change
-  useEffect(() => {
+  // Derive path and points from commands (no effect needed)
+  const { calculatedPath, pathPoints } = useMemo(() => {
     const pythonCommands = commands
-      .filter(cmd => cmd.status === 'parsed' && cmd.pythonCode)
-      .map(cmd => cmd.pythonCode as string);
+      .filter((cmd) => cmd.status === 'parsed' && cmd.pythonCode)
+      .map((cmd) => cmd.pythonCode as string);
 
     if (pythonCommands.length > 0) {
       const startWithTimestamp = { ...startPosition, timestamp: 0 };
       const path = calculatePath(pythonCommands, startWithTimestamp, defaults);
-      setCalculatedPath(path);
-      setPathPoints(generatePathPoints(path));
-      setEstimatedTime(path.totalTime / 1000);
-    } else {
-      setCalculatedPath(null);
-      setPathPoints([]);
-      setEstimatedTime(0);
+      return { calculatedPath: path, pathPoints: generatePathPoints(path) };
     }
-  }, [commands, startPosition, defaults, setEstimatedTime]);
+    return { calculatedPath: null, pathPoints: [] as PathPoint[] };
+  }, [commands, startPosition, defaults]);
+
+  // Sync estimated time to store when path changes
+  useEffect(() => {
+    setEstimatedTime(calculatedPath ? calculatedPath.totalTime / 1000 : 0);
+  }, [calculatedPath, setEstimatedTime]);
+
+  // Theme-aware colors
+  const isDark =
+    mode === 'dark' ||
+    (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const colors = useMemo(
+    () => ({
+      grid: isDark ? '#374151' : '#e5e7eb',
+      path: '#3b82f6',
+      start: '#22c55e',
+      current: '#3b82f6',
+      end: '#ef4444',
+    }),
+    [isDark],
+  );
 
   // Animation loop
   useEffect(() => {
@@ -72,7 +79,7 @@ export function PreviewPanel() {
     }
 
     let startTime: number | null = null;
-    let pausedTime = currentTime;
+    const pausedTime = currentTime;
 
     const animate = (timestamp: number) => {
       if (!startTime) startTime = timestamp;
@@ -181,7 +188,7 @@ export function PreviewPanel() {
 
       ctx.save();
       ctx.translate(pos.x, pos.y);
-      ctx.rotate((pos.angle - 90) * Math.PI / 180); // Adjust for coordinate system
+      ctx.rotate(((pos.angle - 90) * Math.PI) / 180); // Adjust for coordinate system
 
       // Draw robot body
       ctx.fillStyle = color;
@@ -202,7 +209,7 @@ export function PreviewPanel() {
 
       ctx.restore();
     }
-  }, [pathPoints, startPosition, calculatedPath, currentTime, fieldImage, colors.grid, colors.path, colors.start, colors.current, colors.end]);
+  }, [pathPoints, startPosition, calculatedPath, currentTime, fieldImage, colors]);
 
   const handleLoadImage = () => {
     fileInputRef.current?.click();
@@ -247,7 +254,10 @@ export function PreviewPanel() {
   }
 
   return (
-    <aside style={{ width: panelWidth }} className="bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">
+    <aside
+      style={{ width: panelWidth }}
+      className="bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden"
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-2 py-1.5 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
         <span className="text-xs font-semibold text-gray-300 uppercase">Preview</span>
@@ -307,7 +317,10 @@ export function PreviewPanel() {
         {/* Playback controls */}
         <div className="flex items-center gap-1 flex-wrap">
           <button
-            onClick={(e) => { e.stopPropagation(); setIsPlaying(!isPlaying); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsPlaying(!isPlaying);
+            }}
             disabled={!calculatedPath || calculatedPath.totalTime === 0}
             className="w-7 h-7 flex items-center justify-center bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white text-sm rounded"
             title={isPlaying ? 'Pause' : 'Play'}
@@ -315,7 +328,10 @@ export function PreviewPanel() {
             {isPlaying ? '⏸' : '▶'}
           </button>
           <button
-            onClick={(e) => { e.stopPropagation(); handleReset(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleReset();
+            }}
             className="w-7 h-7 flex items-center justify-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-sm rounded text-gray-700 dark:text-gray-200"
             title="Reset"
           >
@@ -334,7 +350,10 @@ export function PreviewPanel() {
           </select>
           <div className="flex-1" />
           <button
-            onClick={(e) => { e.stopPropagation(); handleLoadImage(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleLoadImage();
+            }}
             className="px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-[10px] rounded text-gray-700 dark:text-gray-200"
           >
             {fieldImage ? 'Change Map' : 'Load Map'}

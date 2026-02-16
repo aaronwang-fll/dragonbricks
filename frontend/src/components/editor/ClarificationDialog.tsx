@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 
 interface ClarificationDialogProps {
   isOpen: boolean;
@@ -22,30 +22,32 @@ export function ClarificationDialog({
   const [value, setValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (isOpen && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    // Reset value when dialog opens with new command
+  // Reset value when commandId changes (render-time state adjustment)
+  const [prevCommandId, setPrevCommandId] = useState(commandId);
+  if (commandId !== prevCommandId) {
+    setPrevCommandId(commandId);
     setValue('');
-  }, [commandId]);
+  }
 
-  const handleSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    if (value.trim()) {
-      onSubmit(commandId, field, value.trim());
-      setValue('');
-    }
-  }, [commandId, field, value, onSubmit]);
+  const handleSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      if (value.trim()) {
+        onSubmit(commandId, field, value.trim());
+        setValue('');
+      }
+    },
+    [commandId, field, value, onSubmit],
+  );
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      onCancel();
-    }
-  }, [onCancel]);
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onCancel();
+      }
+    },
+    [onCancel],
+  );
 
   const getPlaceholder = () => {
     switch (type) {
@@ -98,9 +100,7 @@ export function ClarificationDialog({
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
-        <h3 className="text-lg font-semibold text-gray-800 mb-2">
-          Clarification Needed
-        </h3>
+        <h3 className="text-lg font-semibold text-gray-800 mb-2">Clarification Needed</h3>
         <p className="text-sm text-gray-600 mb-4">{message}</p>
 
         <form onSubmit={handleSubmit}>

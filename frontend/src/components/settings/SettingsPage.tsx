@@ -7,22 +7,34 @@ interface SettingsPageProps {
 
 const PORTS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
-export function SettingsPage({ onBack }: SettingsPageProps) {
-  const { mode, setMode } = useThemeStore();
-  const { defaults, setDefaults } = useEditorStore();
-
-  const PortSelect = ({ value, onChange, allowNone = false }: { value: string; onChange: (v: string) => void; allowNone?: boolean }) => (
+function PortSelect({
+  value,
+  onChange,
+  allowNone = false,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  allowNone?: boolean;
+}) {
+  return (
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white"
     >
       {allowNone && <option value="None">None</option>}
-      {PORTS.map(p => (
-        <option key={p} value={p}>{p}</option>
+      {PORTS.map((p) => (
+        <option key={p} value={p}>
+          {p}
+        </option>
       ))}
     </select>
   );
+}
+
+export function SettingsPage({ onBack }: SettingsPageProps) {
+  const { mode, setMode } = useThemeStore();
+  const { defaults, setDefaults } = useEditorStore();
 
   return (
     <div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-900">
@@ -35,7 +47,12 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
           aria-label="Close settings"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         </button>
       </header>
@@ -43,7 +60,6 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl mx-auto space-y-8">
-
           {/* Appearance */}
           <section className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Appearance</h2>
@@ -92,12 +108,16 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
 
           {/* Robot Configuration */}
           <section className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Robot Configuration</h2>
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+              Robot Configuration
+            </h2>
 
             <div className="space-y-6">
               {/* Drive Motors */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">Drive Motors</h3>
+                <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">
+                  Drive Motors
+                </h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
                     <span className="text-gray-700 dark:text-gray-300">Left Motor</span>
@@ -118,7 +138,9 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
 
               {/* Attachment Motors */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">Attachment Motors</h3>
+                <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">
+                  Attachment Motors
+                </h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
                     <span className="text-gray-700 dark:text-gray-300">Attachment Motor 1</span>
@@ -141,7 +163,9 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
 
               {/* Sensors */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">Sensors</h3>
+                <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">
+                  Sensors
+                </h3>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
                     <span className="text-gray-700 dark:text-gray-300">Color</span>
@@ -174,11 +198,15 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
 
           {/* Movement Defaults */}
           <section className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Movement Defaults</h2>
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+              Movement Defaults
+            </h2>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 mb-2">Default Speed (millimeters/s)</label>
+                <label className="block text-gray-700 dark:text-gray-300 mb-2">
+                  Default Speed (millimeters/s)
+                </label>
                 <input
                   type="number"
                   value={defaults.speed}
@@ -187,7 +215,9 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 />
               </div>
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 mb-2">Default Turn Rate (°/s)</label>
+                <label className="block text-gray-700 dark:text-gray-300 mb-2">
+                  Default Turn Rate (°/s)
+                </label>
                 <input
                   type="number"
                   value={defaults.turnRate}
@@ -196,16 +226,22 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 />
               </div>
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 mb-2">Wheel Diameter (millimeters)</label>
+                <label className="block text-gray-700 dark:text-gray-300 mb-2">
+                  Wheel Diameter (millimeters)
+                </label>
                 <input
                   type="number"
                   value={defaults.wheelDiameter}
-                  onChange={(e) => setDefaults({ ...defaults, wheelDiameter: Number(e.target.value) })}
+                  onChange={(e) =>
+                    setDefaults({ ...defaults, wheelDiameter: Number(e.target.value) })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white"
                 />
               </div>
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 mb-2">Axle Track (millimeters)</label>
+                <label className="block text-gray-700 dark:text-gray-300 mb-2">
+                  Axle Track (millimeters)
+                </label>
                 <input
                   type="number"
                   value={defaults.axleTrack}
@@ -218,13 +254,14 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
 
           {/* AI Assistant info */}
           <section className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">AI Assistant</h2>
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+              AI Assistant
+            </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              AI-powered parsing is enabled and managed by the server.
-              Complex commands that can't be parsed by rules will automatically use AI assistance.
+              AI-powered parsing is enabled and managed by the server. Complex commands that can't
+              be parsed by rules will automatically use AI assistance.
             </p>
           </section>
-
         </div>
       </div>
     </div>
