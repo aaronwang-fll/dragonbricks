@@ -4,7 +4,7 @@ Last updated: 2026-02-16
 
 ## Summary
 
-DragonBricks is a functional MVP with the core editing loop working end-to-end: type natural language commands, see Python code generated in real-time, configure robot settings. The backend parser, API, database, auth, and team systems are fully implemented. Cloud persistence and Bluetooth upload are scaffolded but not yet connected.
+DragonBricks is a functional MVP with the core editing loop working end-to-end: type natural language commands, see Python code generated in real-time, configure robot settings. The backend parser, API, database, auth, and team systems are fully implemented. Frontend auth UI + cloud program sync + LLM fallback + Python export are now wired for the MVP; Bluetooth upload remains scaffolded.
 
 **Codebase size**: ~9,100 lines across frontend (~4,800) and backend (~4,300).
 
@@ -16,7 +16,7 @@ DragonBricks is a functional MVP with the core editing loop working end-to-end: 
 |---------|----------|---------|-------|
 | Natural language parser | useParser hook | tokenizer + patterns + parser + codegen | test_parser.py |
 | Fuzzy matching (typo tolerance) | — | fuzzy_match.py (Levenshtein ≤ 3) | test_parser.py |
-| Python code generation | PythonPanel display | codegen.py | test_parser.py |
+| Python code generation | PythonPanel display + .py download | codegen.py | test_parser.py |
 | Clarification system | ClarificationDialog | ParseResult.needs_clarification | test_parser.py |
 | Error display | ErrorDisplay | ParseResult.error | test_parser.py |
 | Autocomplete suggestions | Autocomplete component | — | — |
@@ -24,17 +24,18 @@ DragonBricks is a functional MVP with the core editing loop working end-to-end: 
 | Custom routines | RoutinesSection | Routine parsing in parser.py | — |
 | Resizable editor panels | ResizeHandle + stores | — | — |
 | 2D path preview | PreviewPanel + pathCalculator | — | — |
+| Estimated runtime | PreviewPanel display | — | — |
 | Dark/light theme | themeStore + Tailwind dark: | — | — |
-| User registration & login | — | auth.py + security.py | test_auth.py |
-| JWT authentication | api.ts (token header) | python-jose | test_auth.py |
+| User registration & login | LoginPage/RegisterPage + authStore | auth.py + security.py | test_auth.py |
+| JWT authentication | api.ts (token header) + logout UI | python-jose | test_auth.py |
 | User profile management | — | users.py | test_users.py |
 | Team CRUD | — | teams.py + TeamMember model | test_teams.py |
 | Team roles (owner/admin/member/viewer) | — | TeamRole enum | test_teams.py |
 | Team invite codes | — | invite_code + join endpoint | test_teams.py |
-| Program CRUD | — | programs.py + Program model | test_programs.py |
+| Program CRUD | Sidebar cloud sync (list/load/create/patch) | programs.py + Program model | test_programs.py |
 | Program sharing (per-user) | — | ProgramShare model | test_programs.py |
 | Program forking | — | fork endpoint | test_programs.py |
-| LLM fallback API | — | llm.py | — |
+| LLM fallback API | needs_llm → /llm/parse wiring + AI status indicator | llm.py | — |
 | CI/CD pipeline | — | .github/workflows/ci.yml | — |
 | Linting (ESLint + Ruff) | Configured | Configured | CI |
 | Formatting (Prettier + Ruff) | Configured | Configured | CI |
@@ -46,18 +47,12 @@ DragonBricks is a functional MVP with the core editing loop working end-to-end: 
 | Feature | What Exists | What's Missing |
 |---------|-------------|----------------|
 | Web Bluetooth | useBluetooth hook, pybricks.ts stub | Actual BLE connection, program upload |
-| Cloud persistence | api.ts client, Supabase dep | Frontend auth UI, login/register pages |
-| Program list in sidebar | Sidebar component | Connected to backend (currently local only) |
-| LLM parsing | llm.py endpoint, config for keys | Frontend trigger for needs_llm commands |
 
 ### Not Yet Started
 
 | Feature | Description |
 |---------|-------------|
-| Login/register UI | Frontend pages for authentication |
-| Cloud program sync | Save/load programs via backend API |
 | Real-time collaboration | Multiple users editing simultaneously |
-| Program export | Download as .py file |
 | Program simulation | Step-through execution preview |
 | Offline mode | IndexedDB queue for offline edits |
 | Onboarding tutorial | First-time user walkthrough |
@@ -138,10 +133,8 @@ Commands the rule-based parser handles (no LLM needed):
 
 ## What's Next (Suggested Priority)
 
-1. **Frontend auth UI** — Login/register pages so users can authenticate
-2. **Cloud program sync** — Connect Sidebar program list to backend API
-3. **LLM frontend trigger** — Wire up `needs_llm` commands to `/llm/parse` endpoint
-4. **Web Bluetooth program upload** — Implement BLE protocol for uploading programs to SPIKE Prime
-5. **BLE firmware installer** — Support City/Technic/Move hubs via LWP3 bootloader
-6. **Program export** — Download generated Python as `.py` file
-7. **E2E tests** — Playwright tests for critical user journeys
+1. **Web Bluetooth program upload** — Implement BLE protocol for uploading programs to SPIKE Prime
+2. **BLE firmware installer** — Support City/Technic/Move hubs via LWP3 bootloader
+3. **E2E tests** — Playwright tests for critical user journeys (auth + cloud sync + export)
+4. **Offline mode** — IndexedDB queue for offline edits
+5. **Accessibility (a11y)** — Screen reader support, keyboard nav
