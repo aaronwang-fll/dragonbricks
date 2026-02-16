@@ -2,15 +2,21 @@ import { useState, useRef, useEffect } from 'react';
 import { useConnectionStore } from '../../stores/connectionStore';
 import { useBluetooth } from '../../hooks/useBluetooth';
 import { useFirmwareStore } from '../../stores/firmwareStore';
+import { useAuthStore } from '../../stores/authStore';
+import { api } from '../../lib/api';
 
 interface HeaderProps {
   onSettingsClick: () => void;
+  onNavigateToLogin: () => void;
 }
 
-export function Header({ onSettingsClick }: HeaderProps) {
+export function Header({ onSettingsClick, onNavigateToLogin }: HeaderProps) {
   const { status, programStatus } = useConnectionStore();
   const { isSupported, connect, disconnect, run, stop } = useBluetooth();
   const { openWizard } = useFirmwareStore();
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const clearUser = useAuthStore((state) => state.clearUser);
   const [toolsMenuOpen, setToolsMenuOpen] = useState(false);
   const toolsMenuRef = useRef<HTMLDivElement>(null);
 
@@ -49,6 +55,12 @@ export function Header({ onSettingsClick }: HeaderProps) {
 
   const handleStop = async () => {
     await stop();
+  };
+
+  const handleLogout = () => {
+    api.logout();
+    clearUser();
+    onNavigateToLogin();
   };
 
   return (
@@ -96,6 +108,22 @@ export function Header({ onSettingsClick }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-2">
+        {!isAuthenticated && (
+          <div className="hidden lg:flex items-center text-xs text-gray-500 dark:text-gray-400">
+            <span>Local mode.</span>
+            <button
+              onClick={onNavigateToLogin}
+              className="ml-1 text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Sign in for cloud sync
+            </button>
+          </div>
+        )}
+
+        {isAuthenticated && user && (
+          <span className="hidden md:inline text-sm text-gray-600 dark:text-gray-300">{user.username}</span>
+        )}
+
         {/* Tools Menu */}
         <div className="relative" ref={toolsMenuRef}>
           <button
@@ -112,7 +140,7 @@ export function Header({ onSettingsClick }: HeaderProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          
+
           {toolsMenuOpen && (
             <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-50">
               <div className="py-1">
@@ -174,6 +202,22 @@ export function Header({ onSettingsClick }: HeaderProps) {
             Settings
           </span>
         </button>
+
+        {isAuthenticated ? (
+          <button
+            onClick={handleLogout}
+            className="h-10 px-3 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+          >
+            Logout
+          </button>
+        ) : (
+          <button
+            onClick={onNavigateToLogin}
+            className="h-10 px-3 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+          >
+            Sign In
+          </button>
+        )}
       </div>
     </header>
   );
