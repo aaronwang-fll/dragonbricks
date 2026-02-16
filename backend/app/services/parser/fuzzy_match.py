@@ -40,14 +40,12 @@ def is_fuzzy_match(input_str: str, target: str, max_distance: int = 3) -> bool:
 
 
 def find_best_match(
-    input_str: str,
-    options: List[str],
-    max_distance: int = 3
+    input_str: str, options: List[str], max_distance: int = 3
 ) -> Optional[Tuple[str, int]]:
     """Find best fuzzy match from a list of options."""
     input_lower = input_str.lower()
     best_match: Optional[str] = None
-    best_distance = float('inf')
+    best_distance = float("inf")
 
     for option in options:
         distance = levenshtein_distance(input_lower, option.lower())

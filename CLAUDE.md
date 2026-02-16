@@ -145,17 +145,59 @@ ANTHROPIC_API_KEY=sk-ant-...
 - async/await (no callbacks)
 - Python 3.9+ compatible (use Optional[], List[] not X | None)
 
+## Formatting & Linting
+
+```bash
+# Frontend
+cd frontend
+npm run lint                    # ESLint
+npx prettier --write .          # Prettier format
+
+# Backend
+cd backend
+ruff check .                    # Lint
+ruff format .                   # Format
+```
+
 ## Testing
 
 ```bash
 # Frontend tests
 cd frontend
-npm run test
+npm run test:run               # Single run (CI)
+npm run test                   # Watch mode (dev)
 
 # Backend tests
 cd backend
-pytest
+python -m pytest               # All tests
+python -m pytest -v            # Verbose
 ```
+
+## CI/CD
+
+GitHub Actions runs on every push and PR to main:
+- Frontend: lint + type-check + test
+- Backend: lint + format-check + test
+- See `.github/workflows/ci.yml`
+
+## Agent Harness
+
+This project is configured for AI agent-first development. See `AGENTS.md` for the complete agent guide.
+
+**Key files:**
+- `AGENTS.md` — How agents should work in this repo
+- `.claude/agents/` — Specialized sub-agents (planner, reviewer, tdd-guide, etc.)
+- `.claude/rules/` — Always-active rules (coding-style, git-workflow, testing, security)
+- `.claude/settings.json` — Hooks for auto-formatting and file creation guards
+- `.github/workflows/ci.yml` — Automated CI pipeline
+
+**Agent workflow:**
+1. Read AGENTS.md and CLAUDE.md at session start
+2. Plan before coding (use planner agent for complex features)
+3. Write tests first (TDD), then implement
+4. Run linters and tests before committing
+5. Use code-reviewer agent after making changes
+6. Write progress to `claude-progress.txt`
 
 ## Known Limitations
 

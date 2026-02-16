@@ -1,6 +1,7 @@
 """
 Tests for program endpoints.
 """
+
 import pytest
 from httpx import AsyncClient
 
@@ -82,6 +83,7 @@ async def test_update_program(client: AsyncClient, auth_headers, test_program):
 async def test_update_program_not_owner(client: AsyncClient, test_program, second_user):
     """Test updating a program when not owner."""
     from app.core.security import create_access_token
+
     token = create_access_token(data={"sub": second_user.id})
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -134,6 +136,7 @@ async def test_delete_program(client: AsyncClient, auth_headers, test_program):
 async def test_delete_program_not_owner(client: AsyncClient, test_program, second_user):
     """Test deleting a program when not owner."""
     from app.core.security import create_access_token
+
     token = create_access_token(data={"sub": second_user.id})
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -162,7 +165,9 @@ async def test_share_program(client: AsyncClient, auth_headers, test_program, se
 
 
 @pytest.mark.asyncio
-async def test_list_program_shares(client: AsyncClient, auth_headers, test_program, second_user, db_session):
+async def test_list_program_shares(
+    client: AsyncClient, auth_headers, test_program, second_user, db_session
+):
     """Test listing program shares."""
     from app.models.program import ProgramShare, SharePermission
 
@@ -211,7 +216,9 @@ async def test_shared_user_can_view(client: AsyncClient, test_program, second_us
 
 
 @pytest.mark.asyncio
-async def test_shared_user_cannot_edit_with_view(client: AsyncClient, test_program, second_user, db_session):
+async def test_shared_user_cannot_edit_with_view(
+    client: AsyncClient, test_program, second_user, db_session
+):
     """Test that a user with VIEW permission cannot edit."""
     from app.core.security import create_access_token
     from app.models.program import ProgramShare, SharePermission
@@ -237,7 +244,9 @@ async def test_shared_user_cannot_edit_with_view(client: AsyncClient, test_progr
 
 
 @pytest.mark.asyncio
-async def test_shared_user_can_edit_with_permission(client: AsyncClient, test_program, second_user, db_session):
+async def test_shared_user_can_edit_with_permission(
+    client: AsyncClient, test_program, second_user, db_session
+):
     """Test that a user with EDIT permission can edit."""
     from app.core.security import create_access_token
     from app.models.program import ProgramShare, SharePermission

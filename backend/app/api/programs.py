@@ -1,25 +1,40 @@
-from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
-from sqlalchemy.orm import selectinload
 import secrets
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
 from app.core.database import get_db
 from app.core.security import get_current_user, get_current_user_optional
-from app.models.user import User
-from app.models.team import TeamMember
 from app.models.program import Program, ProgramShare, SharePermission
+from app.models.team import TeamMember
+from app.models.user import User
 from app.schemas.program import (
-    ProgramCreate, ProgramUpdate, ProgramResponse, ProgramListResponse,
-    ProgramShareCreate, ProgramShareResponse, ProgramForkRequest, ProgramOwnerResponse
+    ProgramCreate,
+    ProgramForkRequest,
+    ProgramListResponse,
+    ProgramOwnerResponse,
+    ProgramResponse,
+    ProgramShareCreate,
+    ProgramShareResponse,
+    ProgramUpdate,
 )
 
 router = APIRouter()
 
 # Fields allowed for program update
 PROGRAM_UPDATE_ALLOWED_FIELDS = {
-    "name", "description", "team_id", "setup_section", "main_section",
-    "routines", "defaults", "generated_code", "is_public"
+    "name",
+    "description",
+    "team_id",
+    "setup_section",
+    "main_section",
+    "routines",
+    "defaults",
+    "generated_code",
+    "is_public",
 }
 
 
@@ -28,9 +43,7 @@ def program_to_response(program: Program) -> ProgramResponse:
     owner_response = None
     if program.owner:
         owner_response = ProgramOwnerResponse(
-            id=program.owner.id,
-            username=program.owner.username,
-            full_name=program.owner.full_name
+            id=program.owner.id, username=program.owner.username, full_name=program.owner.full_name
         )
 
     return ProgramResponse(
@@ -49,15 +62,12 @@ def program_to_response(program: Program) -> ProgramResponse:
         share_code=program.share_code,
         version=program.version,
         created_at=program.created_at,
-        updated_at=program.updated_at
+        updated_at=program.updated_at,
     )
 
 
 async def check_program_access(
-    program: Program,
-    user: Optional[User],
-    db: AsyncSession,
-    require_edit: bool = False
+    program: Program, user: Optional[User], db: AsyncSession, require_edit: bool = False
 ) -> bool:
     """Check if user has access to program."""
     # Public programs are viewable by anyone
@@ -74,8 +84,9 @@ async def check_program_access(
     # Check team membership
     if program.team_id:
         result = await db.execute(
-            select(TeamMember)
-            .where(TeamMember.team_id == program.team_id, TeamMember.user_id == user.id)
+            select(TeamMember).where(
+                TeamMember.team_id == program.team_id, TeamMember.user_id == user.id
+            )
         )
         team_member = result.scalar_one_or_none()
         if team_member:
@@ -83,8 +94,9 @@ async def check_program_access(
 
     # Check direct sharing
     result = await db.execute(
-        select(ProgramShare)
-        .where(ProgramShare.program_id == program.id, ProgramShare.user_id == user.id)
+        select(ProgramShare).where(
+            ProgramShare.program_id == program.id, ProgramShare.user_id == user.id
+        )
     )
     share = result.scalar_one_or_none()
     if share:
@@ -99,7 +111,7 @@ async def check_program_access(
 async def list_programs(
     team_id: Optional[str] = Query(None),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """List user's programs and shared programs."""
     query = select(Program).options(selectinload(Program.owner))
@@ -110,13 +122,15 @@ async def list_programs(
     else:
         # User's own programs + shared with them + team programs
         team_ids_query = select(TeamMember.team_id).where(TeamMember.user_id == current_user.id)
-        shared_program_ids = select(ProgramShare.program_id).where(ProgramShare.user_id == current_user.id)
+        shared_program_ids = select(ProgramShare.program_id).where(
+            ProgramShare.user_id == current_user.id
+        )
 
         query = query.where(
             or_(
                 Program.owner_id == current_user.id,
                 Program.team_id.in_(team_ids_query),
-                Program.id.in_(shared_program_ids)
+                Program.id.in_(shared_program_ids),
             )
         )
 
@@ -134,7 +148,7 @@ async def list_programs(
             is_public=p.is_public,
             version=p.version,
             created_at=p.created_at,
-            updated_at=p.updated_at
+            updated_at=p.updated_at,
         )
         for p in programs
     ]
@@ -144,16 +158,14 @@ async def list_programs(
 async def create_program(
     program_data: ProgramCreate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Create a new program."""
     # If team_id provided, verify user is a member
     if program_data.team_id:
         result = await db.execute(
-            select(TeamMember)
-            .where(
-                TeamMember.team_id == program_data.team_id,
-                TeamMember.user_id == current_user.id
+            select(TeamMember).where(
+                TeamMember.team_id == program_data.team_id, TeamMember.user_id == current_user.id
             )
         )
         if not result.scalar_one_or_none():
@@ -168,16 +180,14 @@ async def create_program(
         main_section=program_data.main_section,
         routines=program_data.routines,
         defaults=program_data.defaults,
-        share_code=secrets.token_urlsafe(8)
+        share_code=secrets.token_urlsafe(8),
     )
     db.add(program)
     await db.commit()
 
     # Reload with owner
     result = await db.execute(
-        select(Program)
-        .where(Program.id == program.id)
-        .options(selectinload(Program.owner))
+        select(Program).where(Program.id == program.id).options(selectinload(Program.owner))
     )
     program = result.scalar_one()
 
@@ -188,13 +198,11 @@ async def create_program(
 async def get_program_by_share_code(
     share_code: str,
     current_user: Optional[User] = Depends(get_current_user_optional),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Get a program by its share code."""
     result = await db.execute(
-        select(Program)
-        .where(Program.share_code == share_code)
-        .options(selectinload(Program.owner))
+        select(Program).where(Program.share_code == share_code).options(selectinload(Program.owner))
     )
     program = result.scalar_one_or_none()
 
@@ -208,13 +216,11 @@ async def get_program_by_share_code(
 async def get_program(
     program_id: str,
     current_user: Optional[User] = Depends(get_current_user_optional),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Get a program by ID."""
     result = await db.execute(
-        select(Program)
-        .where(Program.id == program_id)
-        .options(selectinload(Program.owner))
+        select(Program).where(Program.id == program_id).options(selectinload(Program.owner))
     )
     program = result.scalar_one_or_none()
 
@@ -232,13 +238,11 @@ async def update_program(
     program_id: str,
     program_data: ProgramUpdate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Update a program."""
     result = await db.execute(
-        select(Program)
-        .where(Program.id == program_id)
-        .options(selectinload(Program.owner))
+        select(Program).where(Program.id == program_id).options(selectinload(Program.owner))
     )
     program = result.scalar_one_or_none()
 
@@ -265,12 +269,10 @@ async def update_program(
 async def delete_program(
     program_id: str,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Delete a program (owner only)."""
-    result = await db.execute(
-        select(Program).where(Program.id == program_id)
-    )
+    result = await db.execute(select(Program).where(Program.id == program_id))
     program = result.scalar_one_or_none()
 
     if not program:
@@ -288,13 +290,11 @@ async def fork_program(
     program_id: str,
     fork_data: ProgramForkRequest,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Fork (copy) a program."""
     result = await db.execute(
-        select(Program)
-        .where(Program.id == program_id)
-        .options(selectinload(Program.owner))
+        select(Program).where(Program.id == program_id).options(selectinload(Program.owner))
     )
     original = result.scalar_one_or_none()
 
@@ -315,16 +315,14 @@ async def fork_program(
         defaults=original.defaults,
         generated_code=original.generated_code,
         parent_id=original.id,
-        share_code=secrets.token_urlsafe(8)
+        share_code=secrets.token_urlsafe(8),
     )
     db.add(forked)
     await db.commit()
 
     # Reload with owner
     result = await db.execute(
-        select(Program)
-        .where(Program.id == forked.id)
-        .options(selectinload(Program.owner))
+        select(Program).where(Program.id == forked.id).options(selectinload(Program.owner))
     )
     forked = result.scalar_one()
 
@@ -336,12 +334,10 @@ async def fork_program(
 async def list_program_shares(
     program_id: str,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """List all shares for a program (owner only)."""
-    result = await db.execute(
-        select(Program).where(Program.id == program_id)
-    )
+    result = await db.execute(select(Program).where(Program.id == program_id))
     program = result.scalar_one_or_none()
 
     if not program:
@@ -365,23 +361,23 @@ async def list_program_shares(
             user_email=s.user.email,
             user_username=s.user.username,
             permission=s.permission,
-            created_at=s.created_at
+            created_at=s.created_at,
         )
         for s in shares
     ]
 
 
-@router.post("/{program_id}/shares", response_model=ProgramShareResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{program_id}/shares", response_model=ProgramShareResponse, status_code=status.HTTP_201_CREATED
+)
 async def share_program(
     program_id: str,
     share_data: ProgramShareCreate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Share a program with another user."""
-    result = await db.execute(
-        select(Program).where(Program.id == program_id)
-    )
+    result = await db.execute(select(Program).where(Program.id == program_id))
     program = result.scalar_one_or_none()
 
     if not program:
@@ -391,9 +387,7 @@ async def share_program(
         raise HTTPException(status_code=403, detail="Owner access required")
 
     # Find user by email
-    result = await db.execute(
-        select(User).where(User.email == share_data.user_email)
-    )
+    result = await db.execute(select(User).where(User.email == share_data.user_email))
     target_user = result.scalar_one_or_none()
 
     if not target_user:
@@ -404,8 +398,9 @@ async def share_program(
 
     # Check if already shared
     result = await db.execute(
-        select(ProgramShare)
-        .where(ProgramShare.program_id == program_id, ProgramShare.user_id == target_user.id)
+        select(ProgramShare).where(
+            ProgramShare.program_id == program_id, ProgramShare.user_id == target_user.id
+        )
     )
     existing = result.scalar_one_or_none()
     if existing:
@@ -416,9 +411,7 @@ async def share_program(
         share = existing
     else:
         share = ProgramShare(
-            program_id=program_id,
-            user_id=target_user.id,
-            permission=share_data.permission
+            program_id=program_id, user_id=target_user.id, permission=share_data.permission
         )
         db.add(share)
         await db.commit()
@@ -431,7 +424,7 @@ async def share_program(
         user_email=target_user.email,
         user_username=target_user.username,
         permission=share.permission,
-        created_at=share.created_at
+        created_at=share.created_at,
     )
 
 
@@ -440,12 +433,10 @@ async def remove_share(
     program_id: str,
     share_id: str,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Remove a share from a program."""
-    result = await db.execute(
-        select(Program).where(Program.id == program_id)
-    )
+    result = await db.execute(select(Program).where(Program.id == program_id))
     program = result.scalar_one_or_none()
 
     if not program:
@@ -455,7 +446,9 @@ async def remove_share(
         raise HTTPException(status_code=403, detail="Owner access required")
 
     result = await db.execute(
-        select(ProgramShare).where(ProgramShare.id == share_id, ProgramShare.program_id == program_id)
+        select(ProgramShare).where(
+            ProgramShare.id == share_id, ProgramShare.program_id == program_id
+        )
     )
     share = result.scalar_one_or_none()
 

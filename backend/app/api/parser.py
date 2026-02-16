@@ -3,23 +3,34 @@ Parser API endpoints.
 """
 
 from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.api.llm import call_anthropic, call_openai
+from app.core.config import settings
 from app.core.security import get_current_user_optional
 from app.models.user import User
 from app.schemas.parser import (
-    ParseRequest, ParseResponse, ParsedCommandSchema, ClarificationSchema,
-    AutocompleteRequest, AutocompleteResponse, SuggestionSchema,
-    ValidateRequest, ValidateResponse
+    AutocompleteRequest,
+    AutocompleteResponse,
+    ClarificationSchema,
+    ParsedCommandSchema,
+    ParseRequest,
+    ParseResponse,
+    SuggestionSchema,
+    ValidateRequest,
+    ValidateResponse,
 )
 from app.services.parser import (
-    parse_command, generate_full_program,
-    COMMAND_TEMPLATES, DISTANCE_COMPLETIONS, ANGLE_COMPLETIONS, DURATION_COMPLETIONS
+    ANGLE_COMPLETIONS,
+    COMMAND_TEMPLATES,
+    DISTANCE_COMPLETIONS,
+    DURATION_COMPLETIONS,
+    generate_full_program,
+    parse_command,
 )
-from app.services.parser.parser import RobotConfig, ParseResult
 from app.services.parser.codegen import RoutineDefinition
-from app.api.llm import call_openai, call_anthropic
-from app.core.config import settings
+from app.services.parser.parser import ParseResult, RobotConfig
 
 router = APIRouter()
 
@@ -46,21 +57,21 @@ def config_from_schema(schema) -> RobotConfig:
 
 def result_to_schema(original: str, result: ParseResult) -> ParsedCommandSchema:
     """Convert ParseResult to schema."""
-    status = 'parsed'
+    status = "parsed"
     if not result.success:
         if result.needs_clarification:
-            status = 'needs_clarification'
+            status = "needs_clarification"
         elif result.needs_llm:
-            status = 'needs_llm'
+            status = "needs_llm"
         else:
-            status = 'error'
+            status = "error"
 
     clarification = None
     if result.needs_clarification:
         clarification = ClarificationSchema(
             field=result.needs_clarification.field,
             message=result.needs_clarification.message,
-            type=result.needs_clarification.type
+            type=result.needs_clarification.type,
         )
 
     return ParsedCommandSchema(
@@ -70,8 +81,70 @@ def result_to_schema(original: str, result: ParseResult) -> ParsedCommandSchema:
         error=result.error,
         clarification=clarification,
         command_type=result.command_type,
-        confidence=result.confidence
+        confidence=result.confidence,
     )
+
+
+async def try_llm_help(command: str, field: str, default_message: str) -> str:
+    """Use LLM to generate a helpful clarification message."""
+    prompt = f"""The user typed: "{command}"
+
+This command is missing the {field}. Generate a brief, helpful hint (max 15 words) explaining what's needed and give an example. Format: "[what's missing] — e.g., [example]"
+
+Examples of good responses:
+- "Distance needed — e.g., move forward 200mm"
+- "Angle needed — e.g., turn left 90 degrees"
+- "Duration needed — e.g., wait 2 seconds"
+
+Respond with ONLY the hint, nothing else."""
+
+    try:
+        if settings.OPENAI_API_KEY:
+            import httpx
+
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": "gpt-4o-mini",
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": 0.3,
+                        "max_tokens": 50,
+                    },
+                    timeout=5.0,
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    return data["choices"][0]["message"]["content"].strip()
+        elif settings.ANTHROPIC_API_KEY:
+            import httpx
+
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers={
+                        "x-api-key": settings.ANTHROPIC_API_KEY,
+                        "anthropic-version": "2023-06-01",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": "claude-3-haiku-20240307",
+                        "max_tokens": 50,
+                        "messages": [{"role": "user", "content": prompt}],
+                    },
+                    timeout=5.0,
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    return data["content"][0]["text"].strip()
+    except Exception:
+        pass
+
+    return default_message
 
 
 async def try_llm_parse(command: str, config: RobotConfig) -> ParseResult:
@@ -90,36 +163,21 @@ async def try_llm_parse(command: str, config: RobotConfig) -> ParseResult:
     try:
         # Try OpenAI first
         if settings.OPENAI_API_KEY:
-            code, _ = await call_openai(prompt, settings.DEFAULT_LLM_MODEL or "gpt-5-mini")
-            return ParseResult(
-                success=True,
-                python_code=code,
-                confidence=0.85,
-                command_type='llm'
-            )
+            code, _ = await call_openai(prompt, settings.DEFAULT_LLM_MODEL or "gpt-4o-mini")
+            return ParseResult(success=True, python_code=code, confidence=0.85, command_type="llm")
         # Fall back to Anthropic
         elif settings.ANTHROPIC_API_KEY:
             code, _ = await call_anthropic(prompt)
-            return ParseResult(
-                success=True,
-                python_code=code,
-                confidence=0.85,
-                command_type='llm'
-            )
-    except Exception as e:
+            return ParseResult(success=True, python_code=code, confidence=0.85, command_type="llm")
+    except Exception:
         pass
 
-    return ParseResult(
-        success=False,
-        error='LLM parsing not available',
-        confidence=0
-    )
+    return ParseResult(success=False, error="LLM parsing not available", confidence=0)
 
 
 @router.post("/parse", response_model=ParseResponse)
 async def parse_commands(
-    request: ParseRequest,
-    _current_user: User = Depends(get_current_user_optional)
+    request: ParseRequest, _current_user: User = Depends(get_current_user_optional)
 ):
     """Parse natural language commands and generate Python code."""
     config = config_from_schema(request.config)
@@ -127,20 +185,16 @@ async def parse_commands(
     # Extract motor names (attachment1, attachment2, or custom names)
     motor_names: List[str] = []
     if config.attachment1_port:
-        motor_names.append('attachment1')
+        motor_names.append("attachment1")
     if config.attachment2_port:
-        motor_names.append('attachment2')
+        motor_names.append("attachment2")
 
     # Extract routine names for routine call parsing
     routine_names = [r.name for r in request.routines]
 
     # Convert routines to RoutineDefinition for code generation
     routine_defs = [
-        RoutineDefinition(
-            name=r.name,
-            parameters=r.parameters,
-            body=r.body
-        )
+        RoutineDefinition(name=r.name, parameters=r.parameters, body=r.body)
         for r in request.routines
     ]
 
@@ -162,12 +216,19 @@ async def parse_commands(
             if llm_result.success:
                 result = llm_result
 
+        # Enhance clarification messages with LLM
+        if result.needs_clarification and (settings.OPENAI_API_KEY or settings.ANTHROPIC_API_KEY):
+            llm_message = await try_llm_help(
+                command, result.needs_clarification.field, result.needs_clarification.message
+            )
+            result.needs_clarification.message = llm_message
+
         results.append(result_to_schema(command, result))
 
         if result.success and result.python_code:
             python_codes.append(result.python_code)
             # Track if any command uses multitask
-            if result.command_type == 'multitask':
+            if result.command_type == "multitask":
                 uses_multitask = True
 
     # Generate full program with routines and multitask support
@@ -175,21 +236,17 @@ async def parse_commands(
         config,
         python_codes,
         routines=routine_defs if routine_defs else None,
-        uses_multitask=uses_multitask
+        uses_multitask=uses_multitask,
     )
 
     return ParseResponse(
-        results=results,
-        generated_code=program.full,
-        imports=program.imports,
-        setup=program.setup
+        results=results, generated_code=program.full, imports=program.imports, setup=program.setup
     )
 
 
 @router.post("/autocomplete", response_model=AutocompleteResponse)
 async def get_autocomplete(
-    request: AutocompleteRequest,
-    _current_user: User = Depends(get_current_user_optional)
+    request: AutocompleteRequest, _current_user: User = Depends(get_current_user_optional)
 ):
     """Get autocomplete suggestions based on current input."""
     text = request.text.lower()
@@ -198,7 +255,7 @@ async def get_autocomplete(
     # Get text before cursor
     text_before_cursor = text[:cursor].strip()
     words = text_before_cursor.split()
-    last_word = words[-1] if words else ''
+    last_word = words[-1] if words else ""
 
     suggestions: List[SuggestionSchema] = []
 
@@ -206,61 +263,58 @@ async def get_autocomplete(
     if not text_before_cursor:
         # Empty input - show command templates
         for template in COMMAND_TEMPLATES[:5]:
-            suggestions.append(SuggestionSchema(
-                text=template['text'],
-                label=template['label'],
-                category=template['category']
-            ))
-    elif any(w in text_before_cursor for w in ['move', 'forward', 'backward', 'straight']):
+            suggestions.append(
+                SuggestionSchema(
+                    text=template["text"], label=template["label"], category=template["category"]
+                )
+            )
+    elif any(w in text_before_cursor for w in ["move", "forward", "backward", "straight"]):
         # Movement context - suggest distances
         for dist in DISTANCE_COMPLETIONS:
-            suggestions.append(SuggestionSchema(
-                text=dist['text'],
-                label=dist['label'],
-                category='distance'
-            ))
-    elif any(w in text_before_cursor for w in ['turn', 'rotate', 'spin']):
+            suggestions.append(
+                SuggestionSchema(text=dist["text"], label=dist["label"], category="distance")
+            )
+    elif any(w in text_before_cursor for w in ["turn", "rotate", "spin"]):
         # Turn context - suggest angles
         for angle in ANGLE_COMPLETIONS:
-            suggestions.append(SuggestionSchema(
-                text=angle['text'],
-                label=angle['label'],
-                category='angle'
-            ))
-    elif any(w in text_before_cursor for w in ['wait', 'pause', 'delay']):
+            suggestions.append(
+                SuggestionSchema(text=angle["text"], label=angle["label"], category="angle")
+            )
+    elif any(w in text_before_cursor for w in ["wait", "pause", "delay"]):
         # Wait context - suggest durations
         for dur in DURATION_COMPLETIONS:
-            suggestions.append(SuggestionSchema(
-                text=dur['text'],
-                label=dur['label'],
-                category='duration'
-            ))
+            suggestions.append(
+                SuggestionSchema(text=dur["text"], label=dur["label"], category="duration")
+            )
     else:
         # General - filter templates by last word
         for template in COMMAND_TEMPLATES:
-            if last_word and template['text'].startswith(last_word):
-                suggestions.append(SuggestionSchema(
-                    text=template['text'],
-                    label=template['label'],
-                    category=template['category']
-                ))
+            if last_word and template["text"].startswith(last_word):
+                suggestions.append(
+                    SuggestionSchema(
+                        text=template["text"],
+                        label=template["label"],
+                        category=template["category"],
+                    )
+                )
 
         # If no matches, show all templates
         if not suggestions:
             for template in COMMAND_TEMPLATES[:5]:
-                suggestions.append(SuggestionSchema(
-                    text=template['text'],
-                    label=template['label'],
-                    category=template['category']
-                ))
+                suggestions.append(
+                    SuggestionSchema(
+                        text=template["text"],
+                        label=template["label"],
+                        category=template["category"],
+                    )
+                )
 
     return AutocompleteResponse(suggestions=suggestions[:10])
 
 
 @router.post("/validate", response_model=ValidateResponse)
 async def validate_command(
-    request: ValidateRequest,
-    _current_user: User = Depends(get_current_user_optional)
+    request: ValidateRequest, _current_user: User = Depends(get_current_user_optional)
 ):
     """Validate a single command."""
     result = parse_command(request.command)
@@ -270,11 +324,9 @@ async def validate_command(
         clarification = ClarificationSchema(
             field=result.needs_clarification.field,
             message=result.needs_clarification.message,
-            type=result.needs_clarification.type
+            type=result.needs_clarification.type,
         )
 
     return ValidateResponse(
-        valid=result.success,
-        error=result.error,
-        needs_clarification=clarification
+        valid=result.success, error=result.error, needs_clarification=clarification
     )

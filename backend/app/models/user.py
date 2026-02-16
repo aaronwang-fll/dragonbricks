@@ -1,7 +1,8 @@
-from sqlalchemy import Column, String, Boolean, DateTime, Text
+import uuid
+
+from sqlalchemy import Boolean, Column, DateTime, String, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-import uuid
 
 from app.core.database import Base
 
@@ -27,7 +28,9 @@ class User(Base):
 
     # Relationships
     programs = relationship("Program", back_populates="owner", cascade="all, delete-orphan")
-    team_memberships = relationship("TeamMember", back_populates="user", cascade="all, delete-orphan")
+    team_memberships = relationship(
+        "TeamMember", back_populates="user", cascade="all, delete-orphan"
+    )
 
     def __repr__(self):
         return f"<User {self.username}>"

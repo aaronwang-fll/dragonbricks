@@ -1,8 +1,10 @@
 """
 Tests for team endpoints.
 """
+
 import pytest
 from httpx import AsyncClient
+
 from app.models.team import Team
 
 
@@ -51,6 +53,7 @@ async def test_get_team(client: AsyncClient, auth_headers, test_team):
 async def test_get_team_not_member(client: AsyncClient, test_team, second_user, db_session):
     """Test getting a team when not a member."""
     from app.core.security import create_access_token
+
     token = create_access_token(data={"sub": second_user.id})
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -75,6 +78,7 @@ async def test_update_team(client: AsyncClient, auth_headers, test_team):
 async def test_join_team(client: AsyncClient, test_team, second_user, db_session):
     """Test joining a team with invite code."""
     from app.core.security import create_access_token
+
     token = create_access_token(data={"sub": second_user.id})
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -92,6 +96,7 @@ async def test_join_team(client: AsyncClient, test_team, second_user, db_session
 async def test_join_team_wrong_code(client: AsyncClient, test_team, second_user, db_session):
     """Test joining a team with wrong invite code."""
     from app.core.security import create_access_token
+
     token = create_access_token(data={"sub": second_user.id})
     headers = {"Authorization": f"Bearer {token}"}
 

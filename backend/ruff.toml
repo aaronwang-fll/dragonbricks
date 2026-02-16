@@ -1,0 +1,23 @@
+# Ruff configuration for DragonBricks backend
+target-version = "py39"
+line-length = 100
+
+[lint]
+select = [
+  "E",    # pycodestyle errors
+  "W",    # pycodestyle warnings
+  "F",    # pyflakes
+  "I",    # isort
+]
+ignore = [
+  "E501",   # line too long (handled by formatter)
+  "E741",   # ambiguous variable name
+  "F401",   # unused import (gradual cleanup)
+]
+
+[lint.per-file-ignores]
+"tests/*" = ["E", "W"]  # Relaxed for tests
+
+[format]
+quote-style = "double"
+indent-style = "space"

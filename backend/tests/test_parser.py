@@ -1,13 +1,15 @@
 """
 Tests for the parser service.
 """
+
 import pytest
+
+from app.services.parser.fuzzy_match import find_best_match, levenshtein_distance
 from app.services.parser.parser import (
-    parse_command,
     RobotConfig,
+    parse_command,
 )
 from app.services.parser.tokenizer import tokenize
-from app.services.parser.fuzzy_match import levenshtein_distance, find_best_match
 
 
 # Tokenizer tests
@@ -280,9 +282,7 @@ class TestParserMultitask:
 
     def test_while_driving_run_motor(self, config):
         result = parse_command(
-            "move forward 200mm while running motor 180 degrees",
-            config,
-            motor_names=["motor"]
+            "move forward 200mm while running motor 180 degrees", config, motor_names=["motor"]
         )
         assert result.success
         assert result.command_type == "multitask"
@@ -292,8 +292,7 @@ class TestParserMultitask:
 
     def test_simultaneously(self, config):
         result = parse_command(
-            "simultaneously move forward 100mm and turn right 45 degrees",
-            config
+            "simultaneously move forward 100mm and turn right 45 degrees", config
         )
         assert result.success
         assert result.command_type == "multitask"
@@ -303,7 +302,7 @@ class TestParserMultitask:
         result = parse_command(
             "move forward 200mm and run motor 90 degrees at the same time",
             config,
-            motor_names=["motor"]
+            motor_names=["motor"],
         )
         assert result.success
         assert result.command_type == "multitask"

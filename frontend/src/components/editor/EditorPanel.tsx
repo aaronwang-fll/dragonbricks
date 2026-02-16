@@ -57,7 +57,7 @@ export function EditorPanel() {
   }, []);
 
   return (
-    <div className="flex-1 flex flex-col border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
+    <div className="flex-1 flex flex-col border-r border-gray-200 dark:border-gray-700 overflow-y-auto bg-green-100 dark:bg-green-900">
       {/* Setup Section - collapsible header */}
       <details open className="group">
         <summary className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase px-3 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 list-none flex items-center gap-2">

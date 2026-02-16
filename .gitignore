@@ -36,3 +36,6 @@ __pycache__/
 
 # Playwright MCP screenshots
 .playwright-mcp/
+
+# Claude Code session files
+claude-progress.txt

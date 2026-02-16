@@ -1,17 +1,18 @@
-from sqlalchemy import Column, String, Boolean, DateTime, Text, ForeignKey, Enum, Integer
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
-import uuid
 import enum
 import secrets
+import uuid
+
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
 from app.core.database import Base
 
 
 class SharePermission(str, enum.Enum):
-    VIEW = "view"       # Can view and copy
-    COMMENT = "comment" # Can view and comment
-    EDIT = "edit"       # Can edit
+    VIEW = "view"  # Can view and copy
+    COMMENT = "comment"  # Can view and comment
+    EDIT = "edit"  # Can edit
 
 
 class Program(Base):
@@ -28,16 +29,16 @@ class Program(Base):
     team_id = Column(String(36), ForeignKey("teams.id", ondelete="SET NULL"), nullable=True)
 
     # Program content (JSON)
-    setup_section = Column(Text, nullable=True)      # JSON: robot configuration
-    main_section = Column(Text, nullable=True)       # Natural language commands
-    routines = Column(Text, nullable=True)           # JSON: [{name, parameters, body}]
-    generated_code = Column(Text, nullable=True)     # Generated Python code
+    setup_section = Column(Text, nullable=True)  # JSON: robot configuration
+    main_section = Column(Text, nullable=True)  # Natural language commands
+    routines = Column(Text, nullable=True)  # JSON: [{name, parameters, body}]
+    generated_code = Column(Text, nullable=True)  # Generated Python code
 
     # Robot defaults for this program
-    defaults = Column(Text, nullable=True)           # JSON: speed, turnRate, etc.
+    defaults = Column(Text, nullable=True)  # JSON: speed, turnRate, etc.
 
     # Sharing
-    is_public = Column(Boolean, default=False)       # Anyone with link can view
+    is_public = Column(Boolean, default=False)  # Anyone with link can view
     share_code = Column(String(20), unique=True, index=True, nullable=True)
 
     # Versioning
@@ -65,6 +66,7 @@ class Program(Base):
 
 class ProgramShare(Base):
     """Explicit sharing with specific users (beyond team sharing)."""
+
     __tablename__ = "program_shares"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))

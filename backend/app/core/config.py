@@ -1,6 +1,7 @@
 import secrets
+from typing import List, Optional
+
 from pydantic_settings import BaseSettings
-from typing import Optional, List
 
 
 def generate_secret_key() -> str:

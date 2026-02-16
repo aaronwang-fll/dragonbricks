@@ -1,5 +1,6 @@
 from fastapi import APIRouter
-from app.api import auth, users, teams, programs, llm, parser
+
+from app.api import auth, llm, parser, programs, teams, users
 
 api_router = APIRouter()
 

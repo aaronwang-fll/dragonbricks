@@ -79,6 +79,23 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
     };
   }, [lines, parseInput]);
 
+  // Auto-expand Python code for lines that need clarification or have errors
+  useEffect(() => {
+    const linesToExpand = new Set<number>();
+    commands.forEach((cmd, index) => {
+      if (cmd.status === 'needs-clarification' || cmd.status === 'error') {
+        linesToExpand.add(index);
+      }
+    });
+    if (linesToExpand.size > 0) {
+      setExpandedLines(prev => {
+        const newSet = new Set(prev);
+        linesToExpand.forEach(i => newSet.add(i));
+        return newSet;
+      });
+    }
+  }, [commands]);
+
   const handleLineChange = useCallback((index: number, value: string) => {
     setLines(prev => {
       const newLines = [...prev];
@@ -223,8 +240,8 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
   const getPythonCode = useCallback((index: number) => {
     const cmd = commands[index];
     if (cmd?.pythonCode) return cmd.pythonCode;
-    if (cmd?.error) return `# Error: ${cmd.error}`;
-    if (cmd?.status === 'needs-clarification') return `# Needs: ${cmd.clarification?.message || 'more info'}`;
+    if (cmd?.error) return `# ${cmd.error}`;
+    if (cmd?.status === 'needs-clarification') return cmd.clarification?.message || 'More info needed';
     return '';
   }, [commands]);
 
@@ -363,10 +380,10 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
 
           return (
             <div key={index} className="border-b border-gray-100 dark:border-gray-800">
-              {/* Main row - flex wrap for long content */}
+              {/* Main row with flex-wrap for overflow */}
               <div className="flex flex-wrap items-center">
                 {/* Line number */}
-                <span className="w-10 text-xs text-gray-400 dark:text-gray-600 text-right pr-4 flex-shrink-0 select-none border-r border-gray-200 dark:border-gray-700">
+                <span className="w-10 text-xs text-gray-400 dark:text-gray-600 text-right pr-4 flex-shrink-0 select-none border-r border-gray-200 dark:border-gray-700 py-2">
                   {index + 1}
                 </span>
 
@@ -388,44 +405,35 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   onClick={(e) => handleInputClick(index, e)}
                   placeholder={index === 0 && !line ? 'Type command... (Ctrl+Space for suggestions)' : ''}
-                  className="flex-1 bg-transparent text-sm font-mono text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 py-2 pl-1 pr-0 outline-none border-0 min-w-[100px]"
+                  className="flex-1 bg-transparent text-sm font-mono text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 py-2 pl-1 pr-2 outline-none border-0 min-w-[120px]"
                   spellCheck={false}
                 />
 
-                {/* Expand arrow - right after English text */}
-                {hasCode && !isExpanded && (
+                {/* Expand/collapse arrow */}
+                {hasCode && (
                   <button
                     onClick={() => toggleLine(index)}
-                    className="px-1 h-8 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-800 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
-                    title="Show Python"
+                    className="px-2 h-8 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-800 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
+                    title={isExpanded ? 'Hide Python' : 'Show Python'}
                   >
-                    <span className="text-xs">▶</span>
+                    <span className="text-xs">{isExpanded ? '◀' : '▶'}</span>
                   </button>
                 )}
 
-                {/* Inline Python code (shown when expanded) */}
+                {/* Python code - right aligned, wraps if needed */}
                 {hasCode && isExpanded && (
-                  <>
-                    <span className="text-xs font-mono text-gray-400 ml-4 py-2 break-words">
-                      {pythonCode.split('\n').map((codeLine, i) => (
-                        <span key={i} className={codeLine.startsWith('#') ? 'text-gray-500' : 'text-gray-400'}>
-                          {codeLine}{i < pythonCode.split('\n').length - 1 ? ' | ' : ''}
-                        </span>
-                      ))}
-                    </span>
-                    {/* Collapse arrow right after code */}
-                    <button
-                      onClick={() => toggleLine(index)}
-                      className="px-1 h-8 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-800 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
-                      title="Hide Python"
-                    >
-                      <span className="text-xs">◀</span>
-                    </button>
-                  </>
+                  <span className={`text-xs font-mono px-2 py-1 ml-auto flex-shrink-0 max-w-full ${
+                    status === 'needs-clarification' ? 'text-yellow-600 dark:text-yellow-400' :
+                    status === 'error' ? 'text-red-500 dark:text-red-400' :
+                    'text-gray-500 dark:text-gray-400'
+                  }`}>
+                    {pythonCode.split('\n').map((codeLine, i) => (
+                      <span key={i}>
+                        {codeLine}{i < pythonCode.split('\n').length - 1 ? ' | ' : ''}
+                      </span>
+                    ))}
+                  </span>
                 )}
-
-                {/* Spacer to fill remaining space */}
-                <div className="flex-1" />
               </div>
             </div>
           );

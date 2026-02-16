@@ -1,15 +1,21 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 import secrets
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.models.user import User
 from app.models.team import Team, TeamMember, TeamRole
+from app.models.user import User
 from app.schemas.team import (
-    TeamCreate, TeamUpdate, TeamResponse, TeamMemberResponse,
-    TeamInvite, TeamMemberUpdate
+    TeamCreate,
+    TeamInvite,
+    TeamMemberResponse,
+    TeamMemberUpdate,
+    TeamResponse,
+    TeamUpdate,
 )
 
 router = APIRouter()
@@ -28,7 +34,7 @@ def team_to_response(team: Team) -> TeamResponse:
             email=m.user.email,
             full_name=m.user.full_name,
             role=m.role,
-            joined_at=m.joined_at
+            joined_at=m.joined_at,
         )
         for m in team.members
     ]
@@ -41,14 +47,13 @@ def team_to_response(team: Team) -> TeamResponse:
         invite_enabled=team.invite_enabled,
         created_at=team.created_at,
         member_count=len(members),
-        members=members
+        members=members,
     )
 
 
 @router.get("", response_model=list[TeamResponse])
 async def list_teams(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
     """List all teams the user is a member of."""
     result = await db.execute(
@@ -65,23 +70,17 @@ async def list_teams(
 async def create_team(
     team_data: TeamCreate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Create a new team."""
     team = Team(
-        name=team_data.name,
-        description=team_data.description,
-        invite_code=secrets.token_urlsafe(8)
+        name=team_data.name, description=team_data.description, invite_code=secrets.token_urlsafe(8)
     )
     db.add(team)
     await db.flush()
 
     # Add creator as owner
-    member = TeamMember(
-        team_id=team.id,
-        user_id=current_user.id,
-        role=TeamRole.OWNER
-    )
+    member = TeamMember(team_id=team.id, user_id=current_user.id, role=TeamRole.OWNER)
     db.add(member)
     await db.commit()
 
@@ -97,9 +96,7 @@ async def create_team(
 
 @router.get("/{team_id}", response_model=TeamResponse)
 async def get_team(
-    team_id: str,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    team_id: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
     """Get team details."""
     result = await db.execute(
@@ -125,7 +122,7 @@ async def update_team(
     team_id: str,
     team_data: TeamUpdate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Update team (admin/owner only)."""
     result = await db.execute(
@@ -164,15 +161,11 @@ async def update_team(
 
 @router.delete("/{team_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_team(
-    team_id: str,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    team_id: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
     """Delete team (owner only)."""
     result = await db.execute(
-        select(Team)
-        .where(Team.id == team_id)
-        .options(selectinload(Team.members))
+        select(Team).where(Team.id == team_id).options(selectinload(Team.members))
     )
     team = result.scalar_one_or_none()
 
@@ -192,7 +185,7 @@ async def join_team(
     team_id: str,
     invite: TeamInvite,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Join a team using invite code."""
     result = await db.execute(
@@ -216,11 +209,7 @@ async def join_team(
     if is_member:
         raise HTTPException(status_code=400, detail="Already a member")
 
-    member = TeamMember(
-        team_id=team.id,
-        user_id=current_user.id,
-        role=TeamRole.MEMBER
-    )
+    member = TeamMember(team_id=team.id, user_id=current_user.id, role=TeamRole.MEMBER)
     db.add(member)
     await db.commit()
 
@@ -239,14 +228,13 @@ async def join_team(
 
 @router.post("/{team_id}/leave", status_code=status.HTTP_204_NO_CONTENT)
 async def leave_team(
-    team_id: str,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    team_id: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
     """Leave a team."""
     result = await db.execute(
-        select(TeamMember)
-        .where(TeamMember.team_id == team_id, TeamMember.user_id == current_user.id)
+        select(TeamMember).where(
+            TeamMember.team_id == team_id, TeamMember.user_id == current_user.id
+        )
     )
     member = result.scalar_one_or_none()
 
@@ -266,13 +254,14 @@ async def update_member_role(
     user_id: str,
     member_update: TeamMemberUpdate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Update a member's role (admin/owner only)."""
     # Get current user's membership
     result = await db.execute(
-        select(TeamMember)
-        .where(TeamMember.team_id == team_id, TeamMember.user_id == current_user.id)
+        select(TeamMember).where(
+            TeamMember.team_id == team_id, TeamMember.user_id == current_user.id
+        )
     )
     current_member = result.scalar_one_or_none()
 
@@ -306,7 +295,7 @@ async def update_member_role(
         email=target_member.user.email,
         full_name=target_member.user.full_name,
         role=target_member.role,
-        joined_at=target_member.joined_at
+        joined_at=target_member.joined_at,
     )
 
 
@@ -315,13 +304,14 @@ async def remove_member(
     team_id: str,
     user_id: str,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Remove a member from team (admin/owner only)."""
     # Get current user's membership
     result = await db.execute(
-        select(TeamMember)
-        .where(TeamMember.team_id == team_id, TeamMember.user_id == current_user.id)
+        select(TeamMember).where(
+            TeamMember.team_id == team_id, TeamMember.user_id == current_user.id
+        )
     )
     current_member = result.scalar_one_or_none()
 
@@ -330,8 +320,7 @@ async def remove_member(
 
     # Get target member
     result = await db.execute(
-        select(TeamMember)
-        .where(TeamMember.team_id == team_id, TeamMember.user_id == user_id)
+        select(TeamMember).where(TeamMember.team_id == team_id, TeamMember.user_id == user_id)
     )
     target_member = result.scalar_one_or_none()
 

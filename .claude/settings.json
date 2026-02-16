@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const f = process.env.TOOL_INPUT ? JSON.parse(process.env.TOOL_INPUT).file_path || '' : ''; if (/\\.(md|txt)$/.test(f) && !/CLAUDE\\.md|AGENTS\\.md|README\\.md|claude-progress\\.txt|docs\\//.test(f)) { console.log('BLOCK: Avoid creating random .md/.txt files. Only create documentation in docs/ or update CLAUDE.md/AGENTS.md/README.md.'); process.exit(2); } else { process.exit(0); }\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const f = process.env.TOOL_INPUT ? JSON.parse(process.env.TOOL_INPUT).file_path || '' : ''; if (/\\.(ts|tsx|js|jsx)$/.test(f)) { const { execSync } = require('child_process'); try { execSync('cd /Users/xiaofengwang/projects/GitHub/dragonbricks/frontend && npx prettier --write ' + f, { stdio: 'pipe' }); console.log('Formatted: ' + f); } catch(e) { console.log('Prettier skipped: ' + f); } }\"",
+            "timeout": 10000
+          }
+        ]
+      }
+    ]
+  }
+}
