@@ -39,12 +39,10 @@ def generate_full_program(
     # Check if any commands use DriveBase (robot.straight, robot.turn, etc.)
     # or drive motors (left_motor, right_motor)
     needs_drivebase = any(
-        cmd.strip().startswith("robot.") or
-        "left_motor" in cmd or
-        "right_motor" in cmd
+        cmd.strip().startswith("robot.") or "left_motor" in cmd or "right_motor" in cmd
         for cmd in commands
     )
-    
+
     imports = generate_imports(config, uses_multitask, needs_drivebase)
     setup = generate_setup_code(config, needs_drivebase)
     routines_code = generate_routines_code(routines or [])
@@ -75,13 +73,13 @@ def generate_imports(config, uses_multitask: bool = False, needs_drivebase: bool
         pupdevices.append("UltrasonicSensor")
     if config.force_port and config.force_port not in ["None", ""]:
         pupdevices.append("ForceSensor")
-    
+
     imports = [
         "from pybricks.hubs import PrimeHub",
         f"from pybricks.pupdevices import {', '.join(pupdevices)}",
         "from pybricks.parameters import Port, Direction, Stop",
     ]
-    
+
     # Only import DriveBase if needed
     if needs_drivebase:
         imports.append("from pybricks.robotics import DriveBase")
@@ -139,7 +137,9 @@ def generate_setup_code(config: "RobotConfig", needs_drivebase: bool = True) -> 
     # Motor setup - only if DriveBase is needed or commands use left/right motor
     if needs_drivebase:
         lines.append("# Motor setup")
-        lines.append(f"left_motor = Motor(Port.{config.left_motor_port}, Direction.COUNTERCLOCKWISE)")
+        lines.append(
+            f"left_motor = Motor(Port.{config.left_motor_port}, Direction.COUNTERCLOCKWISE)"
+        )
         lines.append(f"right_motor = Motor(Port.{config.right_motor_port}, Direction.CLOCKWISE)")
         lines.append("")
 

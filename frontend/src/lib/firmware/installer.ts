@@ -10,12 +10,7 @@ import { flashLegoUsbDfu, isWebUSBSupported } from './dfu';
 import type { DfuProgress } from './dfu';
 import type { HubType, HubDefinition } from './hubTypes';
 import { getHubDefinition } from './hubTypes';
-import {
-  FirmwareReader,
-  encodeHubName,
-  metadataIsV200,
-  metadataIsV210,
-} from '@pybricks/firmware';
+import { FirmwareReader, encodeHubName, metadataIsV200, metadataIsV210 } from '@pybricks/firmware';
 import type { HubType as PybricksHubType } from '@pybricks/firmware';
 
 export interface FirmwareMetadata {
@@ -120,9 +115,8 @@ function sumComplement32(data: Iterable<number>): number {
 
 // Same CRC32 implementation as Pybricks Code (nibble-wise)
 const crc32Table: ReadonlyArray<number> = [
-  0x00000000, 0x04c11db7, 0x09823b6e, 0x0d4326d9, 0x130476dc, 0x17c56b6b,
-  0x1a864db2, 0x1e475005, 0x2608edb8, 0x22c9f00f, 0x2f8ad6d6, 0x2b4bcb61,
-  0x350c9b64, 0x31cd86d3, 0x3c8ea00a, 0x384fbdbd,
+  0x00000000, 0x04c11db7, 0x09823b6e, 0x0d4326d9, 0x130476dc, 0x17c56b6b, 0x1a864db2, 0x1e475005,
+  0x2608edb8, 0x22c9f00f, 0x2f8ad6d6, 0x2b4bcb61, 0x350c9b64, 0x31cd86d3, 0x3c8ea00a, 0x384fbdbd,
 ];
 
 function crc32(data: Iterable<number>): number {
@@ -144,15 +138,13 @@ function crc32(data: Iterable<number>): number {
 export async function buildPybricksFirmwareFromZip(
   zipData: ArrayBuffer,
   hubName?: string,
-): Promise<{ firmware: Uint8Array; deviceId: PybricksHubType }>{
+): Promise<{ firmware: Uint8Array; deviceId: PybricksHubType }> {
   const reader = await FirmwareReader.load(zipData);
   const firmwareBase = await reader.readFirmwareBase();
   const metadata = await reader.readMetadata();
 
   if (!(metadataIsV200(metadata) || metadataIsV210(metadata))) {
-    throw new Error(
-      'Unsupported Pybricks firmware metadata version. (Expected v2.x.)',
-    );
+    throw new Error('Unsupported Pybricks firmware metadata version. (Expected v2.x.)');
   }
 
   const [checksumFunc, checksumExtraLength] = (() => {
@@ -280,6 +272,6 @@ export async function installFirmware(
 }
 
 /** Restore original LEGO firmware (not implemented natively yet). */
-export function getRestoreFirmwareUrl(_hubType?: HubType): string {
+export function getRestoreFirmwareUrl(): string {
   return 'https://code.pybricks.com/';
 }

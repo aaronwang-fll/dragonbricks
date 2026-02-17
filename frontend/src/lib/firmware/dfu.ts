@@ -21,6 +21,12 @@ export interface DfuProgress {
 
 export type DfuProgressCallback = (p: DfuProgress) => void;
 
+interface DfuInterfaceDescriptor {
+  alternate?: {
+    alternateSetting?: number;
+  };
+}
+
 // From Pybricks Code: currently all SPIKE hubs use the same start address.
 const DFUSE_START_ADDRESS = 0x08008000;
 
@@ -86,8 +92,8 @@ export async function flashLegoUsbDfu(
   await dfu.init();
 
   // We want the interface with alt=0.
-  const ifaceIndex = dfu.interfaces.findIndex(
-    (i: any) => i.alternate?.alternateSetting === 0,
+  const ifaceIndex = (dfu.interfaces as DfuInterfaceDescriptor[]).findIndex(
+    (i) => i.alternate?.alternateSetting === 0,
   );
   if (ifaceIndex === -1) {
     throw new Error('No DFU interface (alt=0) found on this device');
@@ -96,7 +102,11 @@ export async function flashLegoUsbDfu(
   await dfu.connect(ifaceIndex);
 
   try {
-    (dfu as any).dfuseStartAddress = DFUSE_START_ADDRESS;
+    (
+      dfu as WebDFU & {
+        dfuseStartAddress?: number;
+      }
+    ).dfuseStartAddress = DFUSE_START_ADDRESS;
 
     const writeProc = dfu.write(1024, firmware, true);
 
@@ -140,7 +150,7 @@ export async function flashLegoUsbDfu(
     // dfu.close() can throw NetworkError if the device rebooted/disconnected.
     try {
       await dfu.close();
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'NetworkError') {
         // ignore
       } else {

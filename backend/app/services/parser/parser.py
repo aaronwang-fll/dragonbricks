@@ -905,22 +905,22 @@ def try_parse_both_motors(
     tokens: List[Token], input_str: str, config: RobotConfig
 ) -> Optional[ParseResult]:
     """Parse commands to run both left and right motors together.
-    
+
     Patterns:
     - "run both left and right motor 360 degrees"
     - "run both motors 360 degrees"
     - "spin both motors by 180 degrees"
     """
     input_lower = input_str.lower()
-    
+
     # Check for "both" + motor-related words
     if "both" not in input_lower:
         return None
-    
+
     has_motor_context = any(w in input_lower for w in ["motor", "left", "right", "wheel"])
     if not has_motor_context:
         return None
-    
+
     # Extract angle
     number = find_token_by_type(tokens, "number")
     if not number:
@@ -933,10 +933,10 @@ def try_parse_both_motors(
             ),
             confidence=0.7,
         )
-    
+
     angle = int(number.numeric_value or 0)
     speed = int(config.motor_speed)
-    
+
     # Generate parallel execution code - motor methods are directly awaitable in Pybricks
     code = f"""# Run both motors in parallel
 async def main():
@@ -946,10 +946,8 @@ async def main():
     )
 
 run_task(main())"""
-    
-    return ParseResult(
-        success=True, python_code=code, confidence=0.9, command_type="multitask"
-    )
+
+    return ParseResult(success=True, python_code=code, confidence=0.9, command_type="multitask")
 
 
 def try_parse_multitask(
