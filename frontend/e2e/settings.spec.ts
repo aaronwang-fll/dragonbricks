@@ -1,10 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { mockParserApi } from './helpers';
+import { openAppAsGuest } from './helpers';
 
 test.describe('Settings Page', () => {
   test.beforeEach(async ({ page }) => {
-    await mockParserApi(page);
-    await page.goto('/');
+    await openAppAsGuest(page);
   });
 
   test('navigate to settings and back', async ({ page }) => {

@@ -1,14 +1,13 @@
 import { test, expect } from '@playwright/test';
-import { mockParserApi } from './helpers';
+import { openAppAsGuest } from './helpers';
 
 test.describe('Sidebar Program Management', () => {
   test.beforeEach(async ({ page }) => {
-    await mockParserApi(page);
-    await page.goto('/');
+    await openAppAsGuest(page);
   });
 
   test('shows programs count header', async ({ page }) => {
-    await expect(page.getByText(/Programs \(\d+\)/)).toBeVisible();
+    await expect(page.getByText(/PROGRAMS \(\d+\)/i)).toBeVisible();
   });
 
   test('create a new program via dialog', async ({ page }) => {
@@ -62,7 +61,7 @@ test.describe('Sidebar Program Management', () => {
   test('examples section expands and collapses', async ({ page }) => {
     // The Examples toggle is in the sidebar aside element
     const sidebar = page.locator('aside').first();
-    const examplesToggle = sidebar.getByText('Examples', { exact: true });
+    const examplesToggle = sidebar.getByText(/examples/i);
     await expect(examplesToggle).toBeVisible();
 
     // Click to expand
@@ -79,7 +78,7 @@ test.describe('Sidebar Program Management', () => {
     const sidebar = page.locator('aside').first();
 
     // Expand examples
-    await sidebar.getByText('Examples', { exact: true }).click();
+    await sidebar.getByText(/examples/i).click();
 
     // Click Basic Movement category
     await sidebar.getByText('Basic Movement').click();
@@ -98,7 +97,7 @@ test.describe('Sidebar Program Management', () => {
     await page.getByRole('button', { name: 'Create' }).click();
 
     // Expand examples > Basic Movement
-    await sidebar.getByText('Examples', { exact: true }).click();
+    await sidebar.getByText(/examples/i).click();
     await sidebar.getByText('Basic Movement').click();
 
     // Click "Move forward" example

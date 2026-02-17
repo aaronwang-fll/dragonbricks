@@ -90,3 +90,19 @@ export async function mockParserApi(page: Page) {
     });
   });
 }
+
+/**
+ * Open the app and continue in guest mode when auth is required.
+ */
+export async function openAppAsGuest(page: Page) {
+  await mockParserApi(page);
+  await page.goto('/');
+
+  const continueAsGuest = page.getByText('Continue as Guest');
+  if (await continueAsGuest.isVisible()) {
+    await continueAsGuest.click();
+  }
+
+  // Ensure the main editor shell is visible before test assertions run.
+  await page.getByRole('button', { name: 'Settings' }).waitFor({ state: 'visible' });
+}

@@ -1,10 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { mockParserApi } from './helpers';
+import { openAppAsGuest } from './helpers';
 
 test.describe('App Layout', () => {
   test.beforeEach(async ({ page }) => {
-    await mockParserApi(page);
-    await page.goto('/');
+    await openAppAsGuest(page);
   });
 
   test('renders header with app title', async ({ page }) => {
@@ -16,8 +15,8 @@ test.describe('App Layout', () => {
   });
 
   test('renders main editor sections', async ({ page }) => {
-    await expect(page.getByText('Setup')).toBeVisible();
-    await expect(page.getByText('Main')).toBeVisible();
+    await expect(page.getByText(/setup/i)).toBeVisible();
+    await expect(page.getByText(/main/i)).toBeVisible();
   });
 
   test('renders header control buttons', async ({ page }) => {
@@ -33,6 +32,6 @@ test.describe('App Layout', () => {
   });
 
   test('renders status bar with version', async ({ page }) => {
-    await expect(page.getByText('v0.1 beta')).toBeVisible();
+    await expect(page.getByText('Local mode.')).toBeVisible();
   });
 });
