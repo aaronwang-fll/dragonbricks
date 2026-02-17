@@ -12,6 +12,9 @@ export interface CompileResult {
   errors: string[];
 }
 
+// Path to the wasm file in public directory
+const WASM_PATH = '/wasm/mpy-cross-v6.wasm';
+
 /**
  * Compile Python source code to MPY bytecode for Pybricks.
  *
@@ -20,8 +23,8 @@ export interface CompileResult {
  */
 export async function compilePython(source: string): Promise<CompileResult> {
   try {
-    // mpy-cross requires a filename
-    const result = await mpyCrossCompile('__main__.py', source);
+    // mpy-cross requires a filename and path to wasm file
+    const result = await mpyCrossCompile('__main__.py', source, [], WASM_PATH);
 
     if (result.status !== 0 || !result.mpy) {
       // Compilation failed
