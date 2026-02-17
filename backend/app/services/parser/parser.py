@@ -74,6 +74,11 @@ def parse_command(
     if result:
         return result
 
+    # "Run both motors" pattern - before generic multitask
+    result = try_parse_both_motors(tokens, input_str, config)
+    if result:
+        return result
+
     # Multitask patterns (e.g., "while driving, run motor")
     result = try_parse_multitask(tokens, input_str, config, motor_names)
     if result:
@@ -896,6 +901,58 @@ def try_parse_routine_call(
     )
 
 
+def try_parse_both_motors(
+    tokens: List[Token], input_str: str, config: RobotConfig
+) -> Optional[ParseResult]:
+    """Parse commands to run both left and right motors together.
+    
+    Patterns:
+    - "run both left and right motor 360 degrees"
+    - "run both motors 360 degrees"
+    - "spin both motors by 180 degrees"
+    """
+    input_lower = input_str.lower()
+    
+    # Check for "both" + motor-related words
+    if "both" not in input_lower:
+        return None
+    
+    has_motor_context = any(w in input_lower for w in ["motor", "left", "right", "wheel"])
+    if not has_motor_context:
+        return None
+    
+    # Extract angle
+    number = find_token_by_type(tokens, "number")
+    if not number:
+        return ParseResult(
+            success=False,
+            needs_clarification=ClarificationRequest(
+                field="angle",
+                message="How many degrees should both motors run?",
+                type="angle",
+            ),
+            confidence=0.7,
+        )
+    
+    angle = int(number.numeric_value or 0)
+    speed = int(config.motor_speed)
+    
+    # Generate parallel execution code
+    code = f"""# Run both motors in parallel
+async def main():
+    async def run_left():
+        left_motor.run_angle({speed}, {angle})
+    async def run_right():
+        right_motor.run_angle({speed}, {angle})
+    await multitask(run_left(), run_right())
+
+run_task(main())"""
+    
+    return ParseResult(
+        success=True, python_code=code, confidence=0.9, command_type="multitask"
+    )
+
+
 def try_parse_multitask(
     tokens: List[Token], input_str: str, config: RobotConfig, motor_names: List[str]
 ) -> Optional[ParseResult]:
@@ -972,14 +1029,16 @@ def try_parse_multitask(
     task1_indented = "\n    ".join(task1_code.split("\n"))
     task2_indented = "\n    ".join(task2_code.split("\n"))
 
+    # Pybricks requires run_task() to execute async code from top level
     multitask_code = f"""# Parallel execution: {task1_desc} AND {task2_desc}
-async def task1():
-    {task1_indented}
+async def main():
+    async def task1():
+        {task1_indented}
+    async def task2():
+        {task2_indented}
+    await multitask(task1(), task2())
 
-async def task2():
-    {task2_indented}
-
-await multitask(task1(), task2())"""
+run_task(main())"""
 
     return ParseResult(
         success=True, python_code=multitask_code, confidence=0.85, command_type="multitask"
