@@ -433,6 +433,7 @@ export async function disconnectFromHub(): Promise<void> {
  * Uploads a program to slot 0 by default.
  *
  * Implements the same high-level flow as Pybricks Code:
+ *  - compile Python to MPY bytecode
  *  - stop
  *  - write meta size=0
  *  - write user RAM chunks
@@ -445,8 +446,18 @@ export async function uploadProgram(program: string): Promise<boolean> {
   }
 
   try {
-    const encoder = new TextEncoder();
-    const programBytes = encoder.encode(program);
+    // Compile Python source to MPY bytecode
+    const { compilePython } = await import('./compile');
+    console.log('[Pybricks] Compiling Python to MPY...');
+    const compileResult = await compilePython(program);
+
+    if (!compileResult.success || !compileResult.mpy) {
+      console.error('[Pybricks] Compilation failed:', compileResult.errors);
+      throw new Error(`Compilation failed: ${compileResult.errors.join(', ')}`);
+    }
+
+    const programBytes = compileResult.mpy;
+    console.log(`[Pybricks] Compiled: ${program.length} bytes source → ${programBytes.length} bytes mpy`);
 
     // Safety check if we know max program size.
     if (currentHub.maxUserProgramSize !== undefined && programBytes.length > currentHub.maxUserProgramSize) {
