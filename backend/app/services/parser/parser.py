@@ -937,14 +937,13 @@ def try_parse_both_motors(
     angle = int(number.numeric_value or 0)
     speed = int(config.motor_speed)
     
-    # Generate parallel execution code
+    # Generate parallel execution code - motor methods are directly awaitable in Pybricks
     code = f"""# Run both motors in parallel
 async def main():
-    async def run_left():
-        left_motor.run_angle({speed}, {angle})
-    async def run_right():
-        right_motor.run_angle({speed}, {angle})
-    await multitask(run_left(), run_right())
+    await multitask(
+        left_motor.run_angle({speed}, {angle}),
+        right_motor.run_angle({speed}, {angle}),
+    )
 
 run_task(main())"""
     
