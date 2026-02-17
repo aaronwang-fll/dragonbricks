@@ -66,10 +66,19 @@ def generate_full_program(
 
 
 def generate_imports(config, uses_multitask: bool = False, needs_drivebase: bool = True) -> str:
-    """Generate import statements."""
+    """Generate import statements based on what's actually used."""
+    # Build pupdevices import list
+    pupdevices = ["Motor"]
+    if config.color_sensor_port and config.color_sensor_port not in ["None", ""]:
+        pupdevices.append("ColorSensor")
+    if config.ultrasonic_port and config.ultrasonic_port not in ["None", ""]:
+        pupdevices.append("UltrasonicSensor")
+    if config.force_port and config.force_port not in ["None", ""]:
+        pupdevices.append("ForceSensor")
+    
     imports = [
         "from pybricks.hubs import PrimeHub",
-        "from pybricks.pupdevices import Motor",
+        f"from pybricks.pupdevices import {', '.join(pupdevices)}",
         "from pybricks.parameters import Port, Direction, Stop",
     ]
     
