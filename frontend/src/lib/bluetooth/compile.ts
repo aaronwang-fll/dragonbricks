@@ -68,8 +68,8 @@ function wrapInMultiMpy(mpy: Uint8Array, moduleName = '__main__'): Uint8Array {
  * @param preferV6 If true, try v6 first (for newer firmware)
  * @returns Compiled MPY bytecode wrapped in multi-mpy format
  */
-export async function compilePython(source: string, preferV6 = false): Promise<CompileResult> {
-  // Try v5 first (works with most current Pybricks firmware)
+export async function compilePython(source: string, preferV6 = true): Promise<CompileResult> {
+  // Try v6 first (works with Pybricks firmware 3.3+)
   const compilers = preferV6
     ? [
         { compile: mpyCrossCompileV6, path: WASM_PATH_V6, version: 6 },
