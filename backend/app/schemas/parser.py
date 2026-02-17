@@ -112,3 +112,58 @@ class ValidateResponse(BaseModel):
     needs_clarification: Optional[ClarificationSchema] = Field(
         default=None, description="Clarification if needed"
     )
+
+
+class PreviewPointSchema(BaseModel):
+    """Point in the preview path."""
+
+    x: float = Field(..., description="X coordinate in canvas pixels")
+    y: float = Field(..., description="Y coordinate in canvas pixels")
+    angle: float = Field(..., description="Heading angle in degrees")
+    timestamp: float = Field(..., ge=0, description="Timestamp in milliseconds")
+
+
+class PreviewSegmentSchema(BaseModel):
+    """Segment in a calculated preview path."""
+
+    type: Literal["straight", "turn", "wait"]
+    start_point: PreviewPointSchema
+    end_point: PreviewPointSchema
+    command: str
+
+
+class PreviewPathSchema(BaseModel):
+    """Calculated path output."""
+
+    segments: List[PreviewSegmentSchema] = Field(default_factory=list)
+    total_time: float = Field(..., ge=0, description="Total estimated duration in milliseconds")
+    end_position: PreviewPointSchema
+
+
+class PreviewDefaultsSchema(BaseModel):
+    """Preview-only defaults needed for timing."""
+
+    speed: float = Field(default=200, gt=0, description="Robot speed in mm/s")
+    turn_rate: float = Field(default=150, gt=0, description="Robot turn rate in deg/s")
+
+
+class PreviewPathRequest(BaseModel):
+    """Request to calculate movement preview path."""
+
+    commands: List[str] = Field(
+        ..., min_length=1, max_length=500, description="Generated python commands"
+    )
+    start_position: PreviewPointSchema = Field(
+        ..., description="Starting point on the preview canvas"
+    )
+    defaults: PreviewDefaultsSchema = Field(default_factory=PreviewDefaultsSchema)
+    points_per_segment: int = Field(
+        default=20, ge=2, le=200, description="Number of sampled points per segment"
+    )
+
+
+class PreviewPathResponse(BaseModel):
+    """Response containing calculated path and sampled points."""
+
+    path: PreviewPathSchema
+    points: List[PreviewPointSchema] = Field(default_factory=list)

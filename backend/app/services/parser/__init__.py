@@ -10,6 +10,7 @@ from .patterns import (
     DISTANCE_COMPLETIONS,
     DURATION_COMPLETIONS,
 )
+from .preview import calculate_preview_path_response
 from .tokenizer import tokenize
 
 __all__ = [
@@ -21,4 +22,5 @@ __all__ = [
     "DISTANCE_COMPLETIONS",
     "ANGLE_COMPLETIONS",
     "DURATION_COMPLETIONS",
+    "calculate_preview_path_response",
 ]

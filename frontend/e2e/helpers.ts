@@ -89,6 +89,109 @@ export async function mockParserApi(page: Page) {
       }),
     });
   });
+
+  await page.route('**/api/v1/parser/preview', async (route) => {
+    const body = JSON.parse(route.request().postData() || '{}');
+    const commands: string[] = body.commands || [];
+    const start = body.start_position || { x: 100, y: 100, angle: 0, timestamp: 0 };
+    const speed = Math.max(body.defaults?.speed || 200, 1);
+    const turnRate = Math.max(body.defaults?.turn_rate || 150, 1);
+    const pointsPerSegment = Math.max(body.points_per_segment || 20, 2);
+
+    const segments: Array<{
+      type: 'straight' | 'turn' | 'wait';
+      start_point: { x: number; y: number; angle: number; timestamp: number };
+      end_point: { x: number; y: number; angle: number; timestamp: number };
+      command: string;
+    }> = [];
+
+    let current = { ...start, timestamp: 0 };
+    let total = 0;
+
+    for (const command of commands) {
+      const straight = command.match(/robot\.straight\((-?\d+(?:\.\d+)?)\)/);
+      if (straight) {
+        const distance = Number(straight[1]);
+        const radians = ((current.angle - 90) * Math.PI) / 180;
+        const dx = distance * 0.5 * Math.cos(radians);
+        const dy = distance * 0.5 * Math.sin(radians);
+        const duration = (Math.abs(distance) / speed) * 1000;
+        const startPoint = { ...current, timestamp: total };
+        total += duration;
+        current = { ...current, x: current.x + dx, y: current.y + dy, timestamp: total };
+        segments.push({
+          type: 'straight',
+          start_point: startPoint,
+          end_point: { ...current },
+          command,
+        });
+        continue;
+      }
+
+      const turn = command.match(/robot\.turn\((-?\d+(?:\.\d+)?)\)/);
+      if (turn) {
+        const angle = Number(turn[1]);
+        const duration = (Math.abs(angle) / turnRate) * 1000;
+        const startPoint = { ...current, timestamp: total };
+        total += duration;
+        current = {
+          ...current,
+          angle: (((current.angle + angle) % 360) + 360) % 360,
+          timestamp: total,
+        };
+        segments.push({
+          type: 'turn',
+          start_point: startPoint,
+          end_point: { ...current },
+          command,
+        });
+        continue;
+      }
+
+      const wait = command.match(/wait\((\d+(?:\.\d+)?)\)/);
+      if (wait) {
+        const duration = Number(wait[1]);
+        const startPoint = { ...current, timestamp: total };
+        total += duration;
+        current = { ...current, timestamp: total };
+        segments.push({
+          type: 'wait',
+          start_point: startPoint,
+          end_point: { ...current },
+          command,
+        });
+      }
+    }
+
+    const points: Array<{ x: number; y: number; angle: number; timestamp: number }> = [];
+    for (const segment of segments) {
+      const duration = segment.end_point.timestamp - segment.start_point.timestamp;
+      for (let i = 0; i <= pointsPerSegment; i += 1) {
+        const progress = i / pointsPerSegment;
+        points.push({
+          x: segment.start_point.x + (segment.end_point.x - segment.start_point.x) * progress,
+          y: segment.start_point.y + (segment.end_point.y - segment.start_point.y) * progress,
+          angle:
+            segment.start_point.angle +
+            (segment.end_point.angle - segment.start_point.angle) * progress,
+          timestamp: segment.start_point.timestamp + duration * progress,
+        });
+      }
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        path: {
+          segments,
+          total_time: total,
+          end_position: current,
+        },
+        points,
+      }),
+    });
+  });
 }
 
 /**

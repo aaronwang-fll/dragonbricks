@@ -17,6 +17,8 @@ from app.schemas.parser import (
     ParsedCommandSchema,
     ParseRequest,
     ParseResponse,
+    PreviewPathRequest,
+    PreviewPathResponse,
     SuggestionSchema,
     ValidateRequest,
     ValidateResponse,
@@ -26,11 +28,13 @@ from app.services.parser import (
     COMMAND_TEMPLATES,
     DISTANCE_COMPLETIONS,
     DURATION_COMPLETIONS,
+    calculate_preview_path_response,
     generate_full_program,
     parse_command,
 )
 from app.services.parser.codegen import RoutineDefinition
 from app.services.parser.parser import ParseResult, RobotConfig
+from app.services.parser.preview import PreviewPoint
 
 router = APIRouter()
 
@@ -330,3 +334,27 @@ async def validate_command(
     return ValidateResponse(
         valid=result.success, error=result.error, needs_clarification=clarification
     )
+
+
+@router.post("/preview", response_model=PreviewPathResponse)
+async def calculate_preview_path(
+    request: PreviewPathRequest, _current_user: User = Depends(get_current_user_optional)
+):
+    """Calculate robot movement preview path from generated Python commands."""
+    try:
+        response_data = calculate_preview_path_response(
+            commands=request.commands,
+            start_position=PreviewPoint(
+                x=request.start_position.x,
+                y=request.start_position.y,
+                angle=request.start_position.angle,
+                timestamp=request.start_position.timestamp,
+            ),
+            speed=request.defaults.speed,
+            turn_rate=request.defaults.turn_rate,
+            points_per_segment=request.points_per_segment,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return PreviewPathResponse(**response_data)

@@ -218,6 +218,23 @@ class ApiClient {
     });
   }
 
+  async calculatePreviewPath(
+    commands: string[],
+    startPosition: PreviewPathPoint,
+    defaults: PreviewDefaults,
+    pointsPerSegment = 20,
+  ) {
+    return this.request<PreviewPathResponse>('/parser/preview', {
+      method: 'POST',
+      body: JSON.stringify({
+        commands,
+        start_position: startPosition,
+        defaults,
+        points_per_segment: pointsPerSegment,
+      }),
+    });
+  }
+
   // LLM parsing endpoint (auth required)
   async llmParse(command: string, context?: LlmParseRequest['context']) {
     return this.request<LlmParseResponse>('/llm/parse', {
@@ -402,6 +419,36 @@ export interface ValidateResponse {
   valid: boolean;
   error?: string;
   needs_clarification?: ClarificationRequest;
+}
+
+export interface PreviewDefaults {
+  speed: number;
+  turn_rate: number;
+}
+
+export interface PreviewPathPoint {
+  x: number;
+  y: number;
+  angle: number;
+  timestamp: number;
+}
+
+export interface PreviewPathSegment {
+  type: 'straight' | 'turn' | 'wait';
+  start_point: PreviewPathPoint;
+  end_point: PreviewPathPoint;
+  command: string;
+}
+
+export interface PreviewPath {
+  segments: PreviewPathSegment[];
+  total_time: number;
+  end_position: PreviewPathPoint;
+}
+
+export interface PreviewPathResponse {
+  path: PreviewPath;
+  points: PreviewPathPoint[];
 }
 
 // LLM parsing types

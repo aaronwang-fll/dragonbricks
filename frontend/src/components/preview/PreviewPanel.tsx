@@ -2,12 +2,26 @@ import { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import { usePreviewStore } from '../../stores/previewStore';
 import { useEditorStore } from '../../stores/editorStore';
 import { useThemeStore } from '../../stores/themeStore';
-import {
-  calculatePath,
-  generatePathPoints,
-  getPositionAtTime,
-} from '../../lib/preview/pathCalculator';
-import type { PathPoint } from '../../lib/preview/pathCalculator';
+import { api } from '../../lib/api';
+import type { PreviewPath, PreviewPathPoint } from '../../lib/api';
+
+function getPointAtTime(
+  points: PreviewPathPoint[],
+  fallback: PreviewPathPoint,
+  timestamp: number,
+): PreviewPathPoint {
+  if (points.length === 0) {
+    return fallback;
+  }
+
+  for (const point of points) {
+    if (point.timestamp >= timestamp) {
+      return point;
+    }
+  }
+
+  return fallback;
+}
 
 export function PreviewPanel() {
   const {
@@ -34,24 +48,66 @@ export function PreviewPanel() {
   const animationRef = useRef<number | null>(null);
 
   const [currentTime, setCurrentTime] = useState(0);
+  const [calculatedPath, setCalculatedPath] = useState<PreviewPath | null>(null);
+  const [pathPoints, setPathPoints] = useState<PreviewPathPoint[]>([]);
 
-  // Derive path and points from commands (no effect needed)
-  const { calculatedPath, pathPoints } = useMemo(() => {
-    const pythonCommands = commands
-      .filter((cmd) => cmd.status === 'parsed' && cmd.pythonCode)
-      .map((cmd) => cmd.pythonCode as string);
+  const pythonCommands = useMemo(
+    () =>
+      commands
+        .filter((cmd) => cmd.status === 'parsed' && cmd.pythonCode)
+        .map((cmd) => cmd.pythonCode as string),
+    [commands],
+  );
+  const startPointWithTimestamp = useMemo(
+    () => ({ x: startPosition.x, y: startPosition.y, angle: startPosition.angle, timestamp: 0 }),
+    [startPosition.x, startPosition.y, startPosition.angle],
+  );
 
-    if (pythonCommands.length > 0) {
-      const startWithTimestamp = { ...startPosition, timestamp: 0 };
-      const path = calculatePath(pythonCommands, startWithTimestamp, defaults);
-      return { calculatedPath: path, pathPoints: generatePathPoints(path) };
-    }
-    return { calculatedPath: null, pathPoints: [] as PathPoint[] };
-  }, [commands, startPosition, defaults]);
+  // Fetch backend-calculated preview path.
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPreview = async () => {
+      if (pythonCommands.length === 0) {
+        setCalculatedPath(null);
+        setPathPoints([]);
+        setCurrentTime(0);
+        setIsPlaying(false);
+        return;
+      }
+
+      try {
+        const preview = await api.calculatePreviewPath(pythonCommands, startPointWithTimestamp, {
+          speed: defaults.speed || 200,
+          turn_rate: defaults.turnRate || 150,
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        setCalculatedPath(preview.path);
+        setPathPoints(preview.points);
+        setCurrentTime((previous) => Math.min(previous, preview.path.total_time));
+      } catch {
+        if (cancelled) {
+          return;
+        }
+        setCalculatedPath(null);
+        setPathPoints([]);
+      }
+    };
+
+    void loadPreview();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pythonCommands, startPointWithTimestamp, defaults.speed, defaults.turnRate, setIsPlaying]);
 
   // Sync estimated time to store when path changes
   useEffect(() => {
-    setEstimatedTime(calculatedPath ? calculatedPath.totalTime : 0);
+    setEstimatedTime(calculatedPath ? calculatedPath.total_time : 0);
   }, [calculatedPath, setEstimatedTime]);
 
   // Theme-aware colors
@@ -88,8 +144,8 @@ export function PreviewPanel() {
       const elapsed = (timestamp - startTime) * playbackSpeed;
       const newTime = pausedTime + elapsed;
 
-      if (newTime >= calculatedPath.totalTime) {
-        setCurrentTime(calculatedPath.totalTime);
+      if (newTime >= calculatedPath.total_time) {
+        setCurrentTime(calculatedPath.total_time);
         setIsPlaying(false);
         return;
       }
@@ -174,17 +230,17 @@ export function PreviewPanel() {
 
       // Draw current position if playing
       if (calculatedPath && currentTime > 0) {
-        const currentPos = getPositionAtTime(calculatedPath, currentTime);
+        const currentPos = getPointAtTime(pathPoints, calculatedPath.end_position, currentTime);
         drawRobot(ctx, currentPos, colors.current);
       }
 
       // Draw end position
       if (calculatedPath) {
-        drawRobot(ctx, calculatedPath.endPosition, colors.end);
+        drawRobot(ctx, calculatedPath.end_position, colors.end);
       }
     }
 
-    function drawRobot(ctx: CanvasRenderingContext2D, pos: PathPoint, color: string) {
+    function drawRobot(ctx: CanvasRenderingContext2D, pos: PreviewPathPoint, color: string) {
       const size = 12;
 
       ctx.save();
@@ -306,16 +362,16 @@ export function PreviewPanel() {
       {/* Controls - directly under canvas */}
       <div className="px-2 pb-2 space-y-2">
         {/* Timeline */}
-        {calculatedPath && calculatedPath.totalTime > 0 && (
+        {calculatedPath && calculatedPath.total_time > 0 && (
           <div>
             <div className="flex items-center justify-between text-[10px] text-gray-400 mb-0.5">
               <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(calculatedPath.totalTime)}</span>
+              <span>{formatTime(calculatedPath.total_time)}</span>
             </div>
             <input
               type="range"
               min={0}
-              max={calculatedPath.totalTime}
+              max={calculatedPath.total_time}
               value={currentTime}
               onChange={(e) => setCurrentTime(Number(e.target.value))}
               onClick={(e) => e.stopPropagation()}
@@ -331,7 +387,7 @@ export function PreviewPanel() {
               e.stopPropagation();
               setIsPlaying(!isPlaying);
             }}
-            disabled={!calculatedPath || calculatedPath.totalTime === 0}
+            disabled={!calculatedPath || calculatedPath.total_time === 0}
             className="w-7 h-7 flex items-center justify-center bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white text-sm rounded"
             title={isPlaying ? 'Pause' : 'Play'}
           >
