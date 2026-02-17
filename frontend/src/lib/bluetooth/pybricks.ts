@@ -448,6 +448,11 @@ export async function connectToHub(
       numSlots,
     };
 
+    console.log('[Pybricks] Connection complete!', {
+      maxWriteSize,
+      maxUserProgramSize,
+      numSlots,
+    });
     onConnection('connected');
     return currentHub;
   } catch (error) {
