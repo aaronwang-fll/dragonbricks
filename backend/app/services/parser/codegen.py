@@ -36,8 +36,17 @@ def generate_full_program(
     uses_multitask: bool = False,
 ) -> GeneratedProgram:
     """Generate a complete Pybricks Python program."""
-    imports = generate_imports(config, uses_multitask)
-    setup = generate_setup_code(config)
+    # Check if any commands use DriveBase (robot.straight, robot.turn, etc.)
+    # or drive motors (left_motor, right_motor)
+    needs_drivebase = any(
+        cmd.strip().startswith("robot.") or
+        "left_motor" in cmd or
+        "right_motor" in cmd
+        for cmd in commands
+    )
+    
+    imports = generate_imports(config, uses_multitask, needs_drivebase)
+    setup = generate_setup_code(config, needs_drivebase)
     routines_code = generate_routines_code(routines or [])
     main = generate_main_code(commands)
 
@@ -56,14 +65,17 @@ def generate_full_program(
     )
 
 
-def generate_imports(config, uses_multitask: bool = False) -> str:
+def generate_imports(config, uses_multitask: bool = False, needs_drivebase: bool = True) -> str:
     """Generate import statements."""
     imports = [
         "from pybricks.hubs import PrimeHub",
-        "from pybricks.pupdevices import Motor, ColorSensor, UltrasonicSensor, ForceSensor",
-        "from pybricks.parameters import Port, Direction, Stop, Color",
-        "from pybricks.robotics import DriveBase",
+        "from pybricks.pupdevices import Motor",
+        "from pybricks.parameters import Port, Direction, Stop",
     ]
+    
+    # Only import DriveBase if needed
+    if needs_drivebase:
+        imports.append("from pybricks.robotics import DriveBase")
 
     # Add wait and optionally multitask
     if uses_multitask:
@@ -106,7 +118,7 @@ def generate_routines_code(routines: List[RoutineDefinition]) -> str:
     return "\n".join(lines)
 
 
-def generate_setup_code(config: "RobotConfig") -> str:
+def generate_setup_code(config: "RobotConfig", needs_drivebase: bool = True) -> str:
     """Generate hardware initialization code."""
     lines: List[str] = []
 
@@ -115,27 +127,28 @@ def generate_setup_code(config: "RobotConfig") -> str:
     lines.append("hub = PrimeHub()")
     lines.append("")
 
-    # Motor setup
-    lines.append("# Motor setup")
-    lines.append(f"left_motor = Motor(Port.{config.left_motor_port}, Direction.COUNTERCLOCKWISE)")
-    lines.append(f"right_motor = Motor(Port.{config.right_motor_port}, Direction.CLOCKWISE)")
-    lines.append("")
+    # Motor setup - only if DriveBase is needed or commands use left/right motor
+    if needs_drivebase:
+        lines.append("# Motor setup")
+        lines.append(f"left_motor = Motor(Port.{config.left_motor_port}, Direction.COUNTERCLOCKWISE)")
+        lines.append(f"right_motor = Motor(Port.{config.right_motor_port}, Direction.CLOCKWISE)")
+        lines.append("")
 
-    # DriveBase setup
-    lines.append("# DriveBase setup")
-    lines.append(
-        f"robot = DriveBase(left_motor, right_motor, "
-        f"wheel_diameter={config.wheel_diameter}, "
-        f"axle_track={config.axle_track})"
-    )
-    lines.append(
-        f"robot.settings("
-        f"straight_speed={int(config.speed)}, "
-        f"straight_acceleration={int(config.acceleration)}, "
-        f"turn_rate={int(config.turn_rate)}, "
-        f"turn_acceleration={int(config.turn_acceleration)})"
-    )
-    lines.append("")
+        # DriveBase setup
+        lines.append("# DriveBase setup")
+        lines.append(
+            f"robot = DriveBase(left_motor, right_motor, "
+            f"wheel_diameter={config.wheel_diameter}, "
+            f"axle_track={config.axle_track})"
+        )
+        lines.append(
+            f"robot.settings("
+            f"straight_speed={int(config.speed)}, "
+            f"straight_acceleration={int(config.acceleration)}, "
+            f"turn_rate={int(config.turn_rate)}, "
+            f"turn_acceleration={int(config.turn_acceleration)})"
+        )
+        lines.append("")
 
     # Attachment motors
     if config.attachment1_port and config.attachment1_port not in ["None", ""]:
