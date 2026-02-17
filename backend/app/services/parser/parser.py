@@ -366,6 +366,35 @@ def try_parse_wait(tokens: List[Token]) -> Optional[ParseResult]:
     )
 
 
+def resolve_motor_name(motor_word: str, tokens: List[Token], config: RobotConfig) -> str:
+    """Map motor words to actual variable names."""
+    # Check for direction modifiers (left/right motor)
+    has_left = any(t.normalized == "left" for t in tokens if t.type == "direction")
+    has_right = any(t.normalized == "right" for t in tokens if t.type == "direction")
+
+    if has_left:
+        return "left_motor"
+    if has_right:
+        return "right_motor"
+
+    # Map generic motor words to attachment motors
+    if motor_word in ["motor", "arm", "claw", "gripper", "lift", "attachment", "grabber", "lever"]:
+        # Use attachment1 if configured, otherwise left_motor
+        if config.attachment1_port and config.attachment1_port not in ["None", ""]:
+            return "attachment1"
+        else:
+            return "left_motor"
+
+    # If it's already a valid variable name, use it
+    if motor_word in ["left_motor", "right_motor", "attachment1", "attachment2"]:
+        return motor_word
+
+    # Default to attachment1 or left_motor
+    if config.attachment1_port and config.attachment1_port not in ["None", ""]:
+        return "attachment1"
+    return "left_motor"
+
+
 def try_parse_motor(
     tokens: List[Token], config: RobotConfig, motor_names: List[str]
 ) -> Optional[ParseResult]:
@@ -376,7 +405,8 @@ def try_parse_motor(
         return None
 
     motor_token = find_token_by_type(tokens, "motor")
-    motor_name = motor_token.value if motor_token else "motor"
+    motor_word = motor_token.value if motor_token else "motor"
+    motor_name = resolve_motor_name(motor_word, tokens, config)
 
     number = find_token_by_type(tokens, "number")
 
