@@ -2,6 +2,10 @@
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type BluetoothDeviceType = any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+type BluetoothServerType = any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type BluetoothServiceType = any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type BluetoothCharacteristicType = any;
 
 /**
@@ -128,6 +132,24 @@ export function isBluetoothSupported(): boolean {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, operation: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`${operation} timed out after ${ms}ms`));
+    }, ms);
+    promise.then(
+      (result) => {
+        clearTimeout(timer);
+        resolve(result);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
 }
 
 // ===== BLE Operation Queue =====
@@ -333,10 +355,12 @@ export async function connectToHub(
       return null;
     }
 
-    // Connect.
-    let server;
+    // Connect with timeout.
+    let server: BluetoothServerType;
     try {
-      server = await device.gatt.connect();
+      console.log('[Pybricks] Connecting to GATT server...');
+      server = await withTimeout(device.gatt.connect(), 10000, 'GATT connect');
+      console.log('[Pybricks] GATT connected, waiting for stack to settle...');
       // Give the OS Bluetooth stack time to settle (Pybricks Code does this).
       await delay(1000);
     } catch (gattError) {
@@ -345,20 +369,33 @@ export async function connectToHub(
       return null;
     }
 
-    // Service + characteristics.
-    const service = await server.getPrimaryService(PYBRICKS_SERVICE_UUID);
-    const controlChar = await service.getCharacteristic(PYBRICKS_CONTROL_CHAR_UUID);
-    const hubChar = await service.getCharacteristic(PYBRICKS_HUB_CHAR_UUID);
+    // Service + characteristics with timeouts.
+    console.log('[Pybricks] Getting service and characteristics...');
+    let service: BluetoothServiceType;
+    let controlChar: BluetoothCharacteristicType;
+    let hubChar: BluetoothCharacteristicType;
+    try {
+      service = await withTimeout(server.getPrimaryService(PYBRICKS_SERVICE_UUID), 5000, 'Get service');
+      controlChar = await withTimeout(service.getCharacteristic(PYBRICKS_CONTROL_CHAR_UUID), 5000, 'Get control char');
+      hubChar = await withTimeout(service.getCharacteristic(PYBRICKS_HUB_CHAR_UUID), 5000, 'Get hub char');
+    } catch (charError) {
+      const msg = charError instanceof Error ? charError.message : String(charError);
+      onConnection('error', `Failed to get characteristics: ${msg}`);
+      device.gatt.disconnect();
+      return null;
+    }
 
     // Notifications are on the Control/Event characteristic.
+    console.log('[Pybricks] Setting up notifications...');
     try {
       try {
-        await controlChar.stopNotifications();
+        await withTimeout(controlChar.stopNotifications(), 3000, 'Stop notifications');
       } catch {
         // ignore
       }
-      await controlChar.startNotifications();
+      await withTimeout(controlChar.startNotifications(), 5000, 'Start notifications');
       controlChar.addEventListener('characteristicvaluechanged', handleControlNotification);
+      console.log('[Pybricks] Notifications enabled');
     } catch (err) {
       // If we can't enable notifications, downloads may still work, but we lose
       // status/stdout. Keep connecting.
@@ -366,6 +403,7 @@ export async function connectToHub(
     }
 
     // Read hub capabilities (if supported by the firmware/profile).
+    console.log('[Pybricks] Reading hub capabilities...');
     let maxWriteSize: number | undefined;
     let flags: number | undefined;
     let maxUserProgramSize: number | undefined;
@@ -373,7 +411,7 @@ export async function connectToHub(
 
     try {
       if (hubChar.properties?.read) {
-        const caps = await hubChar.readValue();
+        const caps: DataView = await withTimeout(hubChar.readValue(), 5000, 'Read hub capabilities');
         // Profile v1.2.0+ layout:
         // 0..1 maxWriteSize (u16 LE)
         // 2..5 flags (u32 LE)
