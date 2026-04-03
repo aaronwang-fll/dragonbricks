@@ -7,9 +7,7 @@ test.describe('Command Input & Python Generation', () => {
   });
 
   test('shows placeholder text in empty editor', async ({ page }) => {
-    await expect(
-      page.getByPlaceholder('Type command... (Ctrl+Space for suggestions)')
-    ).toBeVisible();
+    await expect(page.getByPlaceholder('Type a command...')).toBeVisible();
   });
 
   test('typing a movement command shows parsed status', async ({ page }) => {
