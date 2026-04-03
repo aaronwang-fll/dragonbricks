@@ -39,8 +39,7 @@ def generate_full_program(
     # Check if any commands or routine bodies use DriveBase or drive motors
     all_code = list(commands) + [r.body for r in (routines or [])]
     needs_drivebase = any(
-        "robot." in code or "left_motor" in code or "right_motor" in code
-        for code in all_code
+        "robot." in code or "left_motor" in code or "right_motor" in code for code in all_code
     )
 
     imports = generate_imports(config, uses_multitask, needs_drivebase)

@@ -19,6 +19,7 @@ async def lifespan(app: FastAPI):
             await conn.run_sync(Base.metadata.create_all)
     except Exception as e:
         import logging
+
         logging.getLogger(__name__).warning("Database unavailable at startup: %s", e)
     yield
     # Shutdown: Close database connections

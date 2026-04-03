@@ -35,16 +35,13 @@ async def try_connect_or_fallback():
         return
     try:
         async with engine.connect() as conn:
-            await conn.execute(
-                __import__("sqlalchemy").text("SELECT 1")
-            )
+            await conn.execute(__import__("sqlalchemy").text("SELECT 1"))
     except Exception as exc:
-        logger.warning(
-            "Primary database unreachable (%s), falling back to SQLite", exc
-        )
+        logger.warning("Primary database unreachable (%s), falling back to SQLite", exc)
         await engine.dispose()
         engine = _build_engine(SQLITE_FALLBACK_URL)
         AsyncSessionLocal.configure(bind=engine)
+
 
 AsyncSessionLocal = async_sessionmaker(
     engine,
