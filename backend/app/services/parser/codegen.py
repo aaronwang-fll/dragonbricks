@@ -36,11 +36,11 @@ def generate_full_program(
     uses_multitask: bool = False,
 ) -> GeneratedProgram:
     """Generate a complete Pybricks Python program."""
-    # Check if any commands use DriveBase (robot.straight, robot.turn, etc.)
-    # or drive motors (left_motor, right_motor)
+    # Check if any commands or routine bodies use DriveBase or drive motors
+    all_code = list(commands) + [r.body for r in (routines or [])]
     needs_drivebase = any(
-        cmd.strip().startswith("robot.") or "left_motor" in cmd or "right_motor" in cmd
-        for cmd in commands
+        "robot." in code or "left_motor" in code or "right_motor" in code
+        for code in all_code
     )
 
     imports = generate_imports(config, uses_multitask, needs_drivebase)
@@ -105,20 +105,16 @@ def generate_routines_code(routines: List[RoutineDefinition]) -> str:
         params = ", ".join(routine.parameters) if routine.parameters else ""
         lines.append(f"def {routine.name}({params}):")
 
-        # Parse routine body and indent
+        # Indent body: preserve relative indentation, add 4-space function indent
         body_lines = routine.body.strip().split("\n")
         if not body_lines or (len(body_lines) == 1 and not body_lines[0].strip()):
             lines.append("    pass")
         else:
             for body_line in body_lines:
-                body_line = body_line.strip()
-                if body_line:
-                    # If body contains natural language, add as comment
-                    if body_line.startswith("#"):
-                        lines.append(f"    {body_line}")
-                    else:
-                        # Assume it's already Python or will be parsed
-                        lines.append(f"    {body_line}")
+                if body_line.strip():
+                    lines.append(f"    {body_line}")
+                else:
+                    lines.append("")  # Preserve blank lines
 
         lines.append("")  # Blank line between functions
 

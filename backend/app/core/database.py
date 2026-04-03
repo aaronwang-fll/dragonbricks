@@ -1,24 +1,50 @@
+import logging
+
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+SQLITE_FALLBACK_URL = "sqlite+aiosqlite:///dragonbricks.db"
 
 
 class Base(DeclarativeBase):
     pass
 
 
-engine_kwargs = {
-    "echo": settings.DEBUG,
-    "pool_pre_ping": True,
-}
+def _build_engine(url: str):
+    kwargs = {
+        "echo": settings.DEBUG,
+        "pool_pre_ping": True,
+    }
+    if not url.startswith("sqlite"):
+        kwargs["pool_size"] = 10
+        kwargs["max_overflow"] = 20
+    return create_async_engine(url, **kwargs)
 
-# SQLite (used in CI tests) doesn't accept pool sizing options.
-if not settings.DATABASE_URL.startswith("sqlite"):
-    engine_kwargs["pool_size"] = 10
-    engine_kwargs["max_overflow"] = 20
 
-engine = create_async_engine(settings.DATABASE_URL, **engine_kwargs)
+engine = _build_engine(settings.DATABASE_URL)
+
+
+async def try_connect_or_fallback():
+    """Test the primary DB connection; fall back to SQLite if unreachable."""
+    global engine, AsyncSessionLocal
+    if settings.DATABASE_URL.startswith("sqlite"):
+        return
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(
+                __import__("sqlalchemy").text("SELECT 1")
+            )
+    except Exception as exc:
+        logger.warning(
+            "Primary database unreachable (%s), falling back to SQLite", exc
+        )
+        await engine.dispose()
+        engine = _build_engine(SQLITE_FALLBACK_URL)
+        AsyncSessionLocal.configure(bind=engine)
 
 AsyncSessionLocal = async_sessionmaker(
     engine,

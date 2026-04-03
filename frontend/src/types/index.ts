@@ -102,7 +102,7 @@ export const DEFAULT_VALUES: Defaults = {
   rightMotorPort: 'B',
   attachment1Port: 'None',
   attachment2Port: 'None',
-  colorSensorPort: 'C',
-  ultrasonicPort: 'D',
+  colorSensorPort: 'None',
+  ultrasonicPort: 'None',
   forcePort: 'None',
 };

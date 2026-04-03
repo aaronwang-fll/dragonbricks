@@ -69,16 +69,32 @@ interface EditorState {
 
   setDefaults: (defaults: Defaults) => void;
   updateDefaults: (updates: Partial<Defaults>) => void;
+  applyServerDefaults: (updates: Partial<Defaults>) => void;
 
   setIsAiProcessing: (isProcessing: boolean) => void;
 }
 
 export const useEditorStore = create<EditorState>((set, get) => {
   const SAVE_DEBOUNCE_MS = 750;
+  const DEFAULTS_SYNC_DEBOUNCE_MS = 2000;
   const pendingSaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
   const pendingCreates = new Set<string>();
+  let defaultsSyncTimer: ReturnType<typeof setTimeout> | null = null;
+  let suppressDefaultsSync = false;
 
   const isCloudSyncEnabled = (): boolean => Boolean(api.getToken());
+
+  const scheduleDefaultsSync = () => {
+    if (!isCloudSyncEnabled() || suppressDefaultsSync) return;
+    if (defaultsSyncTimer) clearTimeout(defaultsSyncTimer);
+    defaultsSyncTimer = setTimeout(() => {
+      defaultsSyncTimer = null;
+      const defaults = get().defaults;
+      api.updateUserSettings({ defaults }).catch((error) => {
+        console.error('Failed to sync defaults to user account:', error);
+      });
+    }, DEFAULTS_SYNC_DEBOUNCE_MS);
+  };
 
   const clearPendingSave = (programId: string) => {
     const timer = pendingSaveTimers.get(programId);
@@ -331,10 +347,20 @@ export const useEditorStore = create<EditorState>((set, get) => {
     setPythonPanelWidth: (width) => set({ pythonPanelWidth: width }),
 
     setDefaults: (defaults) => set({ defaults }),
-    updateDefaults: (updates) =>
+    updateDefaults: (updates) => {
       set((state) => ({
         defaults: { ...state.defaults, ...updates },
-      })),
+      }));
+      scheduleDefaultsSync();
+    },
+
+    applyServerDefaults: (updates) => {
+      suppressDefaultsSync = true;
+      set((state) => ({
+        defaults: { ...state.defaults, ...updates },
+      }));
+      suppressDefaultsSync = false;
+    },
 
     setIsAiProcessing: (isProcessing) => set({ isAiProcessing: isProcessing }),
   };

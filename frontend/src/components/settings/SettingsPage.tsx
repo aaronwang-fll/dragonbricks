@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import { useThemeStore } from '../../stores/themeStore';
 import { useEditorStore } from '../../stores/editorStore';
 
@@ -29,6 +30,48 @@ function PortSelect({
         </option>
       ))}
     </select>
+  );
+}
+
+function NumberInput({
+  value,
+  onChange,
+  className,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  className?: string;
+}) {
+  const [local, setLocal] = useState(String(value));
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (document.activeElement !== inputRef.current) {
+      setLocal(String(value));
+    }
+  }, [value]);
+
+  return (
+    <input
+      ref={inputRef}
+      type="number"
+      value={local}
+      onChange={(e) => {
+        setLocal(e.target.value);
+        const num = Number(e.target.value);
+        if (e.target.value !== '' && !isNaN(num)) {
+          onChange(num);
+        }
+      }}
+      onBlur={() => {
+        if (local === '' || isNaN(Number(local))) {
+          setLocal(String(value));
+        } else {
+          onChange(Number(local));
+        }
+      }}
+      className={className}
+    />
   );
 }
 
@@ -207,10 +250,9 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 <label className="block text-gray-700 dark:text-gray-300 mb-2">
                   Default Speed (millimeters/s)
                 </label>
-                <input
-                  type="number"
+                <NumberInput
                   value={defaults.speed}
-                  onChange={(e) => setDefaults({ ...defaults, speed: Number(e.target.value) })}
+                  onChange={(v) => setDefaults({ ...defaults, speed: v })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white"
                 />
               </div>
@@ -218,10 +260,9 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 <label className="block text-gray-700 dark:text-gray-300 mb-2">
                   Default Turn Rate (°/s)
                 </label>
-                <input
-                  type="number"
+                <NumberInput
                   value={defaults.turnRate}
-                  onChange={(e) => setDefaults({ ...defaults, turnRate: Number(e.target.value) })}
+                  onChange={(v) => setDefaults({ ...defaults, turnRate: v })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white"
                 />
               </div>
@@ -229,12 +270,9 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 <label className="block text-gray-700 dark:text-gray-300 mb-2">
                   Wheel Diameter (millimeters)
                 </label>
-                <input
-                  type="number"
+                <NumberInput
                   value={defaults.wheelDiameter}
-                  onChange={(e) =>
-                    setDefaults({ ...defaults, wheelDiameter: Number(e.target.value) })
-                  }
+                  onChange={(v) => setDefaults({ ...defaults, wheelDiameter: v })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white"
                 />
               </div>
@@ -242,10 +280,9 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 <label className="block text-gray-700 dark:text-gray-300 mb-2">
                   Axle Track (millimeters)
                 </label>
-                <input
-                  type="number"
+                <NumberInput
                   value={defaults.axleTrack}
-                  onChange={(e) => setDefaults({ ...defaults, axleTrack: Number(e.target.value) })}
+                  onChange={(v) => setDefaults({ ...defaults, axleTrack: v })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white"
                 />
               </div>

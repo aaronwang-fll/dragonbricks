@@ -315,19 +315,32 @@ export function PreviewPanel() {
   return (
     <aside
       style={{ width: panelWidth }}
-      className="bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden"
+      className="bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-row overflow-hidden"
     >
-      {/* Header */}
-      <div className="flex items-center justify-between px-2 py-1.5 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-gray-300 uppercase">Preview</span>
-          {estimatedTime > 0 && (
-            <span className="text-[10px] text-gray-500 dark:text-gray-400">
-              {formatEstimatedTime(estimatedTime)}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-1">
+      {/* Close strip - full height */}
+      <button
+        onClick={() => setIsOpen(false)}
+        className="w-8 shrink-0 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 border-r border-gray-200 dark:border-gray-700 flex items-center justify-center group relative"
+        title="Close Preview"
+      >
+        <span className="text-gray-400 text-xs">▶</span>
+        <span className="absolute left-10 px-2 py-1 bg-gray-600 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+          Close Preview
+        </span>
+      </button>
+
+      {/* Main content */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        {/* Header */}
+        <div className="flex items-center justify-between px-2 py-1.5 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-gray-300 uppercase">Preview</span>
+            {estimatedTime > 0 && (
+              <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                {formatEstimatedTime(estimatedTime)}
+              </span>
+            )}
+          </div>
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
@@ -335,120 +348,113 @@ export function PreviewPanel() {
           >
             {isExpanded ? '▶' : '◀'}
           </button>
-          <button
-            onClick={() => setIsOpen(false)}
-            className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
-            title="Close"
-          >
-            ×
-          </button>
         </div>
-      </div>
 
-      {/* Canvas - click to expand */}
-      <div
-        className="p-2 cursor-pointer"
-        onClick={() => setIsExpanded(!isExpanded)}
-        title="Click to expand/collapse"
-      >
-        <canvas
-          ref={canvasRef}
-          width={panelWidth - 16}
-          height={canvasHeight}
-          className="w-full bg-gray-100 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700"
-        />
-      </div>
+        {/* Canvas - click to expand */}
+        <div
+          className="p-2 cursor-pointer"
+          onClick={() => setIsExpanded(!isExpanded)}
+          title="Click to expand/collapse"
+        >
+          <canvas
+            ref={canvasRef}
+            width={panelWidth - 48}
+            height={canvasHeight}
+            className="w-full bg-gray-100 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700"
+          />
+        </div>
 
-      {/* Controls - directly under canvas */}
-      <div className="px-2 pb-2 space-y-2">
-        {/* Timeline */}
-        {calculatedPath && calculatedPath.total_time > 0 && (
-          <div>
-            <div className="flex items-center justify-between text-[10px] text-gray-400 mb-0.5">
-              <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(calculatedPath.total_time)}</span>
+        {/* Controls - directly under canvas */}
+        <div className="px-2 pb-2 space-y-2">
+          {/* Timeline */}
+          {calculatedPath && calculatedPath.total_time > 0 && (
+            <div>
+              <div className="flex items-center justify-between text-[10px] text-gray-400 mb-0.5">
+                <span>{formatTime(currentTime)}</span>
+                <span>{formatTime(calculatedPath.total_time)}</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={calculatedPath.total_time}
+                value={currentTime}
+                onChange={(e) => setCurrentTime(Number(e.target.value))}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full h-1.5 bg-gray-300 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
+              />
             </div>
-            <input
-              type="range"
-              min={0}
-              max={calculatedPath.total_time}
-              value={currentTime}
-              onChange={(e) => setCurrentTime(Number(e.target.value))}
+          )}
+
+          {/* Playback controls */}
+          <div className="flex items-center gap-1 flex-wrap">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsPlaying(!isPlaying);
+              }}
+              disabled={!calculatedPath || calculatedPath.total_time === 0}
+              className="w-7 h-7 flex items-center justify-center bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white text-sm rounded"
+              title={isPlaying ? 'Pause' : 'Play'}
+            >
+              {isPlaying ? '⏸' : '▶'}
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleReset();
+              }}
+              className="w-7 h-7 flex items-center justify-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-sm rounded text-gray-700 dark:text-gray-200"
+              title="Reset"
+            >
+              ⟲
+            </button>
+            <select
+              value={playbackSpeed}
+              onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
               onClick={(e) => e.stopPropagation()}
-              className="w-full h-1.5 bg-gray-300 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
-            />
+              className="px-1 py-1 border border-gray-300 dark:border-gray-600 rounded text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white"
+            >
+              <option value={0.5}>0.5x</option>
+              <option value={1}>1x</option>
+              <option value={2}>2x</option>
+              <option value={4}>4x</option>
+            </select>
+            <div className="flex-1" />
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleLoadImage();
+              }}
+              className="px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-[10px] rounded text-gray-700 dark:text-gray-200"
+            >
+              {fieldImage ? 'Change Map' : 'Load Map'}
+            </button>
           </div>
-        )}
 
-        {/* Playback controls */}
-        <div className="flex items-center gap-1 flex-wrap">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsPlaying(!isPlaying);
-            }}
-            disabled={!calculatedPath || calculatedPath.total_time === 0}
-            className="w-7 h-7 flex items-center justify-center bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white text-sm rounded"
-            title={isPlaying ? 'Pause' : 'Play'}
-          >
-            {isPlaying ? '⏸' : '▶'}
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleReset();
-            }}
-            className="w-7 h-7 flex items-center justify-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-sm rounded text-gray-700 dark:text-gray-200"
-            title="Reset"
-          >
-            ⟲
-          </button>
-          <select
-            value={playbackSpeed}
-            onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
-            onClick={(e) => e.stopPropagation()}
-            className="px-1 py-1 border border-gray-300 dark:border-gray-600 rounded text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white"
-          >
-            <option value={0.5}>0.5x</option>
-            <option value={1}>1x</option>
-            <option value={2}>2x</option>
-            <option value={4}>4x</option>
-          </select>
-          <div className="flex-1" />
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleLoadImage();
-            }}
-            className="px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-[10px] rounded text-gray-700 dark:text-gray-200"
-          >
-            {fieldImage ? 'Change Map' : 'Load Map'}
-          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="hidden"
+          />
         </div>
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          className="hidden"
-        />
-      </div>
-
-      {/* Legend - compact */}
-      <div className="px-2 py-1.5 border-t border-gray-700 text-[10px] text-gray-400 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="flex items-center gap-0.5">
-            <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Start
-          </span>
-          <span className="flex items-center gap-0.5">
-            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span> Now
-          </span>
-          <span className="flex items-center gap-0.5">
-            <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span> End
-          </span>
+        {/* Legend - compact */}
+        <div className="px-2 py-1.5 border-t border-gray-700 text-[10px] text-gray-400 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-0.5">
+              <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Start
+            </span>
+            <span className="flex items-center gap-0.5">
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span> Now
+            </span>
+            <span className="flex items-center gap-0.5">
+              <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span> End
+            </span>
+          </div>
+          <span className="text-yellow-500">Path only</span>
         </div>
-        <span className="text-yellow-500">Path only</span>
       </div>
     </aside>
   );

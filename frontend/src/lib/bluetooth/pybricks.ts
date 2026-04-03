@@ -114,7 +114,7 @@ export interface HubStatus {
 
 export type ConnectionCallback = (
   status: 'connected' | 'disconnected' | 'error',
-  error?: string
+  error?: string,
 ) => void;
 export type OutputCallback = (output: string) => void;
 export type StatusCallback = (status: HubStatus) => void;
@@ -122,12 +122,16 @@ export type StatusCallback = (status: HubStatus) => void;
 let currentHub: PybricksHub | null = null;
 let outputCallback: OutputCallback | null = null;
 let statusCallback: StatusCallback | null = null;
+const outputListeners = new Set<OutputCallback>();
 
 let lastStatus: HubStatus | null = null;
 let statusWaiters: Array<(s: HubStatus) => void> = [];
 
 export function isBluetoothSupported(): boolean {
-  return typeof navigator !== 'undefined' && 'bluetooth' in (navigator as unknown as Record<string, unknown>);
+  return (
+    typeof navigator !== 'undefined' &&
+    'bluetooth' in (navigator as unknown as Record<string, unknown>)
+  );
 }
 
 function delay(ms: number): Promise<void> {
@@ -147,7 +151,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, operation: string): Pro
       (error) => {
         clearTimeout(timer);
         reject(error);
-      }
+      },
     );
   });
 }
@@ -160,7 +164,7 @@ let bleOperationQueue: Promise<void> = Promise.resolve();
 async function queueBleWrite(
   char: BluetoothCharacteristicType,
   data: Uint8Array,
-  description: string
+  description: string,
 ): Promise<void> {
   // Chain this operation onto the queue
   const operation = bleOperationQueue.then(async () => {
@@ -175,10 +179,10 @@ async function queueBleWrite(
     // Small delay between operations to let the hub process
     await delay(20);
   });
-  
+
   // Update the queue to include this operation (whether it succeeds or fails)
   bleOperationQueue = operation.catch(() => {});
-  
+
   // Wait for this specific operation to complete
   return operation;
 }
@@ -268,9 +272,29 @@ function handleControlNotification(event: Event): void {
   }
 
   if (eventType === EventType.WriteStdout) {
-    const bytes = value.buffer.slice(1);
-    const output = new TextDecoder().decode(bytes);
-    if (outputCallback && output) outputCallback(output);
+    // Skip the first byte (event type). Use byteOffset to handle DataViews
+    // that don't start at the beginning of the underlying ArrayBuffer.
+    const output = new TextDecoder().decode(
+      new Uint8Array(value.buffer, value.byteOffset + 1, value.byteLength - 1),
+    );
+
+    // Always forward to dedicated listeners (e.g. recording service)
+    if (output) {
+      outputListeners.forEach((listener) => listener(output));
+    }
+
+    // Filter telemetry lines from the main console output to avoid
+    // flooding the UI with thousands of data lines during recording.
+    if (outputCallback && output) {
+      const filtered = output
+        .split('\n')
+        .filter((line) => {
+          const trimmed = line.trimStart();
+          return trimmed !== '' && !trimmed.startsWith('D,') && trimmed !== 'READY';
+        })
+        .join('\n');
+      if (filtered) outputCallback(filtered);
+    }
     return;
   }
 
@@ -282,7 +306,10 @@ function handleControlNotification(event: Event): void {
   // Unknown event type: ignore
 }
 
-async function waitForStatus(predicate: (s: HubStatus) => boolean, timeoutMs: number): Promise<boolean> {
+async function waitForStatus(
+  predicate: (s: HubStatus) => boolean,
+  timeoutMs: number,
+): Promise<boolean> {
   if (lastStatus && predicate(lastStatus)) return true;
 
   return await new Promise<boolean>((resolve) => {
@@ -309,10 +336,13 @@ async function waitForStatus(predicate: (s: HubStatus) => boolean, timeoutMs: nu
 export async function connectToHub(
   onConnection: ConnectionCallback,
   onOutput?: OutputCallback,
-  onStatus?: StatusCallback
+  onStatus?: StatusCallback,
 ): Promise<PybricksHub | null> {
   if (!isBluetoothSupported()) {
-    onConnection('error', 'Web Bluetooth is not supported in this browser. Please use Chrome or Edge.');
+    onConnection(
+      'error',
+      'Web Bluetooth is not supported in this browser. Please use Chrome or Edge.',
+    );
     return null;
   }
 
@@ -355,34 +385,65 @@ export async function connectToHub(
       return null;
     }
 
-    // Connect with timeout.
+    // Connect and discover characteristics, with one automatic retry
+    // if the GATT server disconnects during discovery (common BLE issue).
     let server: BluetoothServerType;
-    try {
-      console.log('[Pybricks] Connecting to GATT server...');
-      server = await withTimeout(device.gatt.connect(), 10000, 'GATT connect');
-      console.log('[Pybricks] GATT connected, waiting for stack to settle...');
-      // Give the OS Bluetooth stack time to settle (Pybricks Code does this).
-      await delay(1000);
-    } catch (gattError) {
-      const msg = gattError instanceof Error ? gattError.message : String(gattError);
-      onConnection('error', `GATT connection failed: ${msg}`);
-      return null;
-    }
-
-    // Service + characteristics with timeouts.
-    console.log('[Pybricks] Getting service and characteristics...');
     let service: BluetoothServiceType;
     let controlChar: BluetoothCharacteristicType;
     let hubChar: BluetoothCharacteristicType;
-    try {
-      service = await withTimeout(server.getPrimaryService(PYBRICKS_SERVICE_UUID), 5000, 'Get service');
-      controlChar = await withTimeout(service.getCharacteristic(PYBRICKS_CONTROL_CHAR_UUID), 5000, 'Get control char');
-      hubChar = await withTimeout(service.getCharacteristic(PYBRICKS_HUB_CHAR_UUID), 5000, 'Get hub char');
-    } catch (charError) {
-      const msg = charError instanceof Error ? charError.message : String(charError);
-      onConnection('error', `Failed to get characteristics: ${msg}`);
-      device.gatt.disconnect();
-      return null;
+
+    const connectAndDiscover = async (attempt: number): Promise<boolean> => {
+      try {
+        console.log(`[Pybricks] Connecting to GATT server (attempt ${attempt})...`);
+        server = await withTimeout(device.gatt.connect(), 30000, 'GATT connect');
+        console.log('[Pybricks] GATT connected, waiting for stack to settle...');
+        await delay(1000);
+      } catch (gattError) {
+        const msg = gattError instanceof Error ? gattError.message : String(gattError);
+        onConnection('error', `GATT connection failed: ${msg}`);
+        return false;
+      }
+
+      try {
+        console.log('[Pybricks] Getting service and characteristics...');
+        service = await withTimeout(
+          server.getPrimaryService(PYBRICKS_SERVICE_UUID),
+          5000,
+          'Get service',
+        );
+        controlChar = await withTimeout(
+          service.getCharacteristic(PYBRICKS_CONTROL_CHAR_UUID),
+          5000,
+          'Get control char',
+        );
+        hubChar = await withTimeout(
+          service.getCharacteristic(PYBRICKS_HUB_CHAR_UUID),
+          5000,
+          'Get hub char',
+        );
+        return true;
+      } catch (charError) {
+        const msg = charError instanceof Error ? charError.message : String(charError);
+        console.warn(`[Pybricks] Characteristic discovery failed (attempt ${attempt}):`, msg);
+        try {
+          device.gatt.disconnect();
+        } catch {
+          // ignore
+        }
+        return false;
+      }
+    };
+
+    if (!(await connectAndDiscover(1))) {
+      console.log('[Pybricks] Retrying connection...');
+      await delay(500);
+      if (!(await connectAndDiscover(2))) {
+        onConnection(
+          'error',
+          'Failed to connect. Make sure the hub is on and nearby, then try again.',
+        );
+        return null;
+      }
     }
 
     // Notifications are on the Control/Event characteristic.
@@ -411,7 +472,11 @@ export async function connectToHub(
 
     try {
       if (hubChar.properties?.read) {
-        const caps: DataView = await withTimeout(hubChar.readValue(), 5000, 'Read hub capabilities');
+        const caps: DataView = await withTimeout(
+          hubChar.readValue(),
+          5000,
+          'Read hub capabilities',
+        );
         // Profile v1.2.0+ layout:
         // 0..1 maxWriteSize (u16 LE)
         // 2..5 flags (u32 LE)
@@ -500,11 +565,18 @@ export async function uploadProgram(program: string): Promise<boolean> {
     }
 
     const programBytes = compileResult.mpy;
-    console.log(`[Pybricks] Compiled: ${program.length} bytes source → ${programBytes.length} bytes mpy`);
+    console.log(
+      `[Pybricks] Compiled: ${program.length} bytes source → ${programBytes.length} bytes mpy`,
+    );
 
     // Safety check if we know max program size.
-    if (currentHub.maxUserProgramSize !== undefined && programBytes.length > currentHub.maxUserProgramSize) {
-      throw new Error(`Program is too large (${programBytes.length} bytes). Max is ${currentHub.maxUserProgramSize} bytes.`);
+    if (
+      currentHub.maxUserProgramSize !== undefined &&
+      programBytes.length > currentHub.maxUserProgramSize
+    ) {
+      throw new Error(
+        `Program is too large (${programBytes.length} bytes). Max is ${currentHub.maxUserProgramSize} bytes.`,
+      );
     }
 
     // Stop any running program first.
@@ -535,7 +607,10 @@ export async function uploadProgram(program: string): Promise<boolean> {
     }
 
     // Finalize download.
-    await writeControl(createWriteUserProgramMetaCommand(programBytes.length), `meta(size=${programBytes.length})`);
+    await writeControl(
+      createWriteUserProgramMetaCommand(programBytes.length),
+      `meta(size=${programBytes.length})`,
+    );
 
     return true;
   } catch (error) {
@@ -604,4 +679,12 @@ export function getCurrentHub(): PybricksHub | null {
 
 export function isConnected(): boolean {
   return currentHub?.isConnected ?? false;
+}
+
+export function addOutputListener(listener: OutputCallback): void {
+  outputListeners.add(listener);
+}
+
+export function removeOutputListener(listener: OutputCallback): void {
+  outputListeners.delete(listener);
 }

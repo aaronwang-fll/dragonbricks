@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../stores/authStore';
+import { useThemeStore } from '../../stores/themeStore';
+import { GoogleSignInButton } from './GoogleSignInButton';
 
 interface LoginPageProps {
   onSuccess: () => void;
@@ -11,6 +13,12 @@ interface LoginPageProps {
 
 export function LoginPage({ onSuccess, onSwitchToRegister, onContinueAsGuest }: LoginPageProps) {
   const setUser = useAuthStore((state) => state.setUser);
+  const setThemeMode = useThemeStore((s) => s.setMode);
+
+  useEffect(() => {
+    setThemeMode('system');
+  }, [setThemeMode]);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +48,14 @@ export function LoginPage({ onSuccess, onSwitchToRegister, onContinueAsGuest }: 
           <p className="text-sm text-gray-600 dark:text-gray-300">
             Sign in to sync programs across devices.
           </p>
+        </div>
+
+        <GoogleSignInButton onSuccess={onSuccess} onError={(msg) => setError(msg)} />
+
+        <div className="flex items-center gap-3">
+          <div className="flex-1 border-t border-gray-300 dark:border-gray-600" />
+          <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">or</span>
+          <div className="flex-1 border-t border-gray-300 dark:border-gray-600" />
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

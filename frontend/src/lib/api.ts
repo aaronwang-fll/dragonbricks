@@ -5,7 +5,34 @@
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
 
 interface ApiError {
-  detail: string;
+  detail: string | unknown;
+}
+
+function friendlyError(status: number, detail: unknown): string {
+  // If the backend sent a plain string, use it directly
+  if (typeof detail === 'string') return detail;
+
+  // Map common HTTP codes to plain-language messages
+  switch (status) {
+    case 400:
+      return 'Something was wrong with that request. Please try again.';
+    case 401:
+      return 'You need to sign in first.';
+    case 403:
+      return "You don't have permission to do that.";
+    case 404:
+      return 'Could not find what you were looking for.';
+    case 422:
+      return "The server didn't understand that command. Try rephrasing it.";
+    case 429:
+      return 'Too many requests. Wait a moment and try again.';
+    case 500:
+      return 'Something went wrong on the server. Please try again later.';
+    case 503:
+      return 'The server is temporarily unavailable. Please try again later.';
+    default:
+      return 'Something unexpected happened. Please try again.';
+  }
 }
 
 class ApiClient {
@@ -50,9 +77,9 @@ class ApiClient {
 
     if (!response.ok) {
       const error: ApiError = await response.json().catch(() => ({
-        detail: `HTTP ${response.status}: ${response.statusText}`,
+        detail: null,
       }));
-      throw new Error(error.detail);
+      throw new Error(friendlyError(response.status, error.detail));
     }
 
     // Handle 204 No Content
@@ -88,6 +115,18 @@ class ApiClient {
     return data;
   }
 
+  async googleAuth(credential: string) {
+    const data = await this.request<{
+      access_token: string;
+      user: User;
+    }>('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ credential }),
+    });
+    this.setToken(data.access_token);
+    return data;
+  }
+
   logout() {
     this.setToken(null);
   }
@@ -101,6 +140,13 @@ class ApiClient {
     return this.request<User>('/users/me', {
       method: 'PATCH',
       body: JSON.stringify(data),
+    });
+  }
+
+  async updateUserSettings(settings: UserSettings) {
+    return this.request<User>('/users/me', {
+      method: 'PATCH',
+      body: JSON.stringify({ settings }),
     });
   }
 
@@ -245,6 +291,10 @@ class ApiClient {
 }
 
 // Types
+export interface UserSettings {
+  defaults?: Partial<Defaults>;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -252,6 +302,7 @@ export interface User {
   full_name?: string;
   avatar_url?: string;
   is_active: boolean;
+  settings?: UserSettings;
   created_at: string;
 }
 

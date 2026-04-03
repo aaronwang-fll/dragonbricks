@@ -5,18 +5,27 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import api_router
 from app.core.config import settings
-from app.core.database import Base, engine
+from app.core import database
+from app.core.database import Base
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan handler - setup and teardown."""
-    # Startup: Create database tables
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Startup: test DB connection, fall back to SQLite if needed, then create tables
+    try:
+        await database.try_connect_or_fallback()
+        async with database.engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("Database unavailable at startup: %s", e)
     yield
     # Shutdown: Close database connections
-    await engine.dispose()
+    try:
+        await database.engine.dispose()
+    except Exception:
+        pass
 
 
 app = FastAPI(
