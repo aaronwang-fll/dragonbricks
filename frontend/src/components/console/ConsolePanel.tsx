@@ -8,16 +8,8 @@ function formatTime(ts: number): string {
 }
 
 export function ConsolePanel() {
-  const {
-    entries,
-    isOpen,
-    height,
-    autoScroll,
-    clear,
-    setOpen,
-    setHeight,
-    setAutoScroll,
-  } = useConsoleStore();
+  const { entries, isOpen, height, autoScroll, clear, setOpen, setHeight, setAutoScroll } =
+    useConsoleStore();
 
   const { status } = useConnectionStore();
 
@@ -65,7 +57,9 @@ export function ConsolePanel() {
         >
           <span className={`text-[10px] transition-transform ${isOpen ? 'rotate-90' : ''}`}>▶</span>
           Console
-          <span className="text-[11px] font-normal text-gray-500 dark:text-gray-400">({connectionLabel})</span>
+          <span className="text-[11px] font-normal text-gray-500 dark:text-gray-400">
+            ({connectionLabel})
+          </span>
         </button>
 
         <div className="flex items-center gap-2">
@@ -92,7 +86,9 @@ export function ConsolePanel() {
           className="flex-1 overflow-auto font-mono text-xs px-3 py-2 space-y-1"
         >
           {entries.length === 0 && (
-            <div className="text-gray-500 dark:text-gray-400">No output yet. Run a program to see print() output here.</div>
+            <div className="text-gray-500 dark:text-gray-400">
+              No output yet. Run a program to see print() output here.
+            </div>
           )}
 
           {entries.map((e) => {
@@ -105,8 +101,12 @@ export function ConsolePanel() {
 
             return (
               <div key={e.id} className="flex gap-3">
-                <span className="w-20 shrink-0 text-gray-400 dark:text-gray-500">{formatTime(e.ts)}</span>
-                <pre className={`whitespace-pre-wrap break-words ${color}`}>{e.text}</pre>
+                <span className="w-20 shrink-0 text-gray-400 dark:text-gray-500">
+                  {formatTime(e.ts)}
+                </span>
+                <pre className={`whitespace-pre-wrap break-words min-w-0 flex-1 ${color}`}>
+                  {e.text}
+                </pre>
               </div>
             );
           })}

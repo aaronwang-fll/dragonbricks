@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { api } from '../lib/api';
 import type { User } from '../lib/api';
+import { useEditorStore } from './editorStore';
 
 interface AuthState {
   user: User | null;
@@ -19,7 +20,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: !!api.getToken(), // Start loading if token exists
   error: null,
 
-  setUser: (user) => set({ user, isAuthenticated: true, isLoading: false, error: null }),
+  setUser: (user) => {
+    set({ user, isAuthenticated: true, isLoading: false, error: null });
+    if (user.settings?.defaults) {
+      useEditorStore.getState().applyServerDefaults(user.settings.defaults);
+    }
+  },
 
   clearUser: () => set({ user: null, isAuthenticated: false, isLoading: false, error: null }),
 
@@ -36,6 +42,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ isLoading: true });
       const user = await api.getCurrentUser();
       set({ user, isAuthenticated: true, isLoading: false, error: null });
+      if (user.settings?.defaults) {
+        useEditorStore.getState().applyServerDefaults(user.settings.defaults);
+      }
     } catch {
       // Token is invalid, clear it
       api.logout();

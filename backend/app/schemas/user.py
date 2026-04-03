@@ -26,6 +26,7 @@ class UserResponse(BaseModel):
     full_name: Optional[str]
     avatar_url: Optional[str]
     is_active: bool
+    settings: Optional[dict] = None
     created_at: datetime
 
     class Config:
@@ -46,3 +47,7 @@ class Token(BaseModel):
 class PasswordChange(BaseModel):
     current_password: str
     new_password: str = Field(..., min_length=6)
+
+
+class GoogleAuthRequest(BaseModel):
+    credential: str

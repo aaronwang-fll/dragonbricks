@@ -1,3 +1,6 @@
+import json
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,10 +12,37 @@ from app.schemas.user import PasswordChange, UserResponse, UserUpdate
 router = APIRouter()
 
 
+def _parse_settings(user: User) -> Optional[dict]:
+    """Parse the settings JSON string from the User model into a dict."""
+    if not user.settings:
+        return None
+    if isinstance(user.settings, dict):
+        return user.settings
+    try:
+        return json.loads(user.settings)
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+
+def _user_to_response(user: User) -> UserResponse:
+    """Convert a User model to a UserResponse with parsed settings."""
+    data = {
+        "id": user.id,
+        "email": user.email,
+        "username": user.username,
+        "full_name": user.full_name,
+        "avatar_url": user.avatar_url,
+        "is_active": user.is_active,
+        "settings": _parse_settings(user),
+        "created_at": user.created_at,
+    }
+    return UserResponse(**data)
+
+
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(current_user: User = Depends(get_current_user)):
     """Get current user profile."""
-    return UserResponse.model_validate(current_user)
+    return _user_to_response(current_user)
 
 
 # Fields allowed for user self-update
@@ -31,12 +61,15 @@ async def update_current_user(
     # Only update allowed fields to prevent privilege escalation
     for field, value in update_data.items():
         if field in USER_UPDATE_ALLOWED_FIELDS:
+            # Serialize settings dict to JSON string for the Text column
+            if field == "settings" and isinstance(value, dict):
+                value = json.dumps(value)
             setattr(current_user, field, value)
 
     await db.commit()
     await db.refresh(current_user)
 
-    return UserResponse.model_validate(current_user)
+    return _user_to_response(current_user)
 
 
 @router.post("/me/change-password", status_code=status.HTTP_204_NO_CONTENT)

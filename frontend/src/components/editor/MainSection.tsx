@@ -466,12 +466,40 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
                   onChange={(e) => handleLineChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   onClick={(e) => handleInputClick(index, e)}
-                  placeholder={
-                    index === 0 && !line ? 'Type command... (Ctrl+Space for suggestions)' : ''
-                  }
-                  className="flex-1 bg-transparent text-sm font-mono text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 py-2 pl-1 pr-2 outline-none border-0 min-w-[120px]"
+                  placeholder={index === 0 && !line ? 'Type a command...' : ''}
+                  className="flex-1 bg-transparent text-sm font-mono text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 py-2 pl-1 pr-0 outline-none border-0 min-w-[120px]"
                   spellCheck={false}
                 />
+
+                {/* Suggestions button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const input = inputRefs.current[index];
+                    if (input && containerRef.current) {
+                      const rect = input.getBoundingClientRect();
+                      const containerRect = containerRef.current.getBoundingClientRect();
+                      showAutocomplete(
+                        rect.left - containerRect.left,
+                        rect.bottom - containerRect.top + 4,
+                      );
+                      setActiveLineIndex(index);
+                      setCursorPosition(input.selectionStart || 0);
+                      input.focus();
+                    }
+                  }}
+                  className="px-1.5 h-8 flex items-center justify-center text-gray-300 dark:text-gray-600 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0 rounded"
+                  title="Show suggestions"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                    />
+                  </svg>
+                </button>
 
                 {/* Expand/collapse arrow */}
                 {hasCode && (
@@ -517,7 +545,7 @@ export function MainSection({ onClarificationNeeded }: MainSectionProps) {
             <p className="text-xs text-gray-700">
               Examples: move forward 200mm • turn right 90 degrees • wait 1 second
             </p>
-            <p className="text-xs text-gray-500 mt-2">Press Ctrl+Space for suggestions</p>
+            <p className="text-xs text-gray-500 mt-2">Click the lightbulb for suggestions</p>
           </div>
         </div>
       )}

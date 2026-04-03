@@ -2,6 +2,8 @@
 Tests for authentication endpoints.
 """
 
+from unittest.mock import patch
+
 import pytest
 from httpx import AsyncClient
 
@@ -109,5 +111,119 @@ async def test_login_nonexistent_user(client: AsyncClient):
             "email": "nonexistent@example.com",
             "password": "password123",
         },
+    )
+    assert response.status_code == 401
+
+
+# --- Google Auth Tests ---
+
+FAKE_GOOGLE_IDINFO = {
+    "sub": "google-uid-12345",
+    "email": "googleuser@gmail.com",
+    "name": "Google User",
+    "picture": "https://lh3.googleusercontent.com/photo.jpg",
+}
+
+
+@pytest.mark.asyncio
+async def test_google_auth_new_user(client: AsyncClient):
+    """Test Google sign-in creates a new user."""
+    with (
+        patch("app.api.auth.settings") as mock_settings,
+        patch("app.api.auth.google_id_token.verify_oauth2_token") as mock_verify,
+    ):
+        mock_settings.GOOGLE_CLIENT_ID = "test-client-id"
+        mock_verify.return_value = FAKE_GOOGLE_IDINFO
+
+        response = await client.post(
+            "/api/v1/auth/google",
+            json={"credential": "fake-jwt-token"},
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert data["user"]["email"] == "googleuser@gmail.com"
+    assert data["user"]["username"] == "googleuser"
+
+
+@pytest.mark.asyncio
+async def test_google_auth_existing_email(client: AsyncClient, test_user):
+    """Test Google sign-in links to existing email account."""
+    with (
+        patch("app.api.auth.settings") as mock_settings,
+        patch("app.api.auth.google_id_token.verify_oauth2_token") as mock_verify,
+    ):
+        mock_settings.GOOGLE_CLIENT_ID = "test-client-id"
+        mock_verify.return_value = {
+            **FAKE_GOOGLE_IDINFO,
+            "email": "test@example.com",  # Same as test_user
+        }
+
+        response = await client.post(
+            "/api/v1/auth/google",
+            json={"credential": "fake-jwt-token"},
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["user"]["email"] == "test@example.com"
+    assert data["user"]["username"] == "testuser"
+
+
+@pytest.mark.asyncio
+async def test_google_auth_invalid_token(client: AsyncClient):
+    """Test Google sign-in rejects invalid tokens."""
+    with (
+        patch("app.api.auth.settings") as mock_settings,
+        patch(
+            "app.api.auth.google_id_token.verify_oauth2_token",
+            side_effect=ValueError("Invalid token"),
+        ),
+    ):
+        mock_settings.GOOGLE_CLIENT_ID = "test-client-id"
+
+        response = await client.post(
+            "/api/v1/auth/google",
+            json={"credential": "bad-token"},
+        )
+
+    assert response.status_code == 401
+    assert "Invalid Google token" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_google_auth_not_configured(client: AsyncClient):
+    """Test Google sign-in returns 503 when not configured."""
+    with patch("app.api.auth.settings") as mock_settings:
+        mock_settings.GOOGLE_CLIENT_ID = None
+
+        response = await client.post(
+            "/api/v1/auth/google",
+            json={"credential": "any-token"},
+        )
+
+    assert response.status_code == 503
+    assert "not configured" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_login_rejects_oauth_only_user(client: AsyncClient, db_session):
+    """Test password login fails for users who only have Google auth."""
+    from app.models.user import User
+
+    user = User(
+        email="oauth@example.com",
+        username="oauthuser",
+        hashed_password=None,
+        google_id="google-only-user",
+        auth_provider="google",
+    )
+    db_session.add(user)
+    await db_session.commit()
+
+    response = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "oauth@example.com", "password": "anypassword"},
     )
     assert response.status_code == 401

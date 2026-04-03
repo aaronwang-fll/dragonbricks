@@ -6,13 +6,16 @@ import { EditorPanel } from './components/editor/EditorPanel';
 import { PreviewPanel } from './components/preview/PreviewPanel';
 import { SettingsPage } from './components/settings/SettingsPage';
 import { FirmwareWizard } from './components/firmware';
+import { RecordingManager } from './components/recording/RecordingManager';
 import { LoginPage } from './components/auth/LoginPage';
 import { RegisterPage } from './components/auth/RegisterPage';
 import { ConsolePanel } from './components/console';
+import { UberCodePage } from './components/ubercode/UberCodePage';
+import { WaypointPage } from './components/waypoint/WaypointPage';
 import { api } from './lib/api';
 import { useAuthStore } from './stores/authStore';
 
-type Page = 'login' | 'register' | 'main' | 'settings';
+type Page = 'login' | 'register' | 'main' | 'settings' | 'ubercode' | 'waypoint';
 
 function App() {
   const setUser = useAuthStore((state) => state.setUser);
@@ -36,7 +39,10 @@ function App() {
       }
 
       try {
-        const user = await api.getCurrentUser();
+        const timeout = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Auth check timed out')), 5000),
+        );
+        const user = await Promise.race([api.getCurrentUser(), timeout]);
         if (cancelled) {
           return;
         }
@@ -93,11 +99,21 @@ function App() {
     return <SettingsPage onBack={() => setCurrentPage('main')} />;
   }
 
+  if (currentPage === 'ubercode') {
+    return <UberCodePage onBack={() => setCurrentPage('main')} />;
+  }
+
+  if (currentPage === 'waypoint') {
+    return <WaypointPage onBack={() => setCurrentPage('main')} />;
+  }
+
   return (
     <div className="h-screen flex flex-col bg-blue-300 dark:bg-blue-950">
       <Header
         onSettingsClick={() => setCurrentPage('settings')}
         onNavigateToLogin={() => setCurrentPage('login')}
+        onUberCodeClick={() => setCurrentPage('ubercode')}
+        onWaypointClick={() => setCurrentPage('waypoint')}
       />
       <div className="flex-1 flex">
         <Sidebar />
@@ -111,6 +127,7 @@ function App() {
       </div>
       <StatusBar />
       <FirmwareWizard />
+      <RecordingManager />
     </div>
   );
 }
