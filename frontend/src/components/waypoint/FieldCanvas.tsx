@@ -769,7 +769,6 @@ export function FieldCanvas() {
       addWaypoint,
       setDragTarget,
       setSelectedId,
-      setActiveTool,
       waypoints.length,
       obstacles,
     ],

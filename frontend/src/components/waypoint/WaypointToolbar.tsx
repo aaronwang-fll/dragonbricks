@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useWaypointStore } from '../../stores/waypointStore';
 import { planPath } from '../../lib/waypoint/pathPlanner';
 import { generateWaypointCode } from '../../lib/waypoint/waypointCodegen';
@@ -13,7 +13,6 @@ const TOOLS: { value: WaypointTool; label: string; icon: string }[] = [
 ];
 
 export function WaypointToolbar() {
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [rawImageDataUrl, setRawImageDataUrl] = useState<string | null>(null);
 
   const {
@@ -25,7 +24,6 @@ export function WaypointToolbar() {
     obstacles,
     robotSize,
     computedPath,
-    fieldImageDataUrl,
     setComputedPath,
     setGeneratedCode,
     setFieldImageDataUrl,
@@ -43,24 +41,6 @@ export function WaypointToolbar() {
   const handleClear = () => {
     setComputedPath(null);
     setGeneratedCode('');
-  };
-
-  const handleLoadMap = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setRawImageDataUrl(reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
-    // Reset so the same file can be re-selected
-    e.target.value = '';
   };
 
   return (

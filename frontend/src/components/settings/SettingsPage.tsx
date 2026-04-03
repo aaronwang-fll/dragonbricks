@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { useThemeStore } from '../../stores/themeStore';
 import { useEditorStore } from '../../stores/editorStore';
 
@@ -42,20 +42,18 @@ function NumberInput({
   onChange: (v: number) => void;
   className?: string;
 }) {
+  const [focused, setFocused] = useState(false);
   const [local, setLocal] = useState(String(value));
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (document.activeElement !== inputRef.current) {
-      setLocal(String(value));
-    }
-  }, [value]);
+  const displayed = focused ? local : String(value);
 
   return (
     <input
-      ref={inputRef}
       type="number"
-      value={local}
+      value={displayed}
+      onFocus={() => {
+        setFocused(true);
+        setLocal(String(value));
+      }}
       onChange={(e) => {
         setLocal(e.target.value);
         const num = Number(e.target.value);
@@ -64,6 +62,7 @@ function NumberInput({
         }
       }}
       onBlur={() => {
+        setFocused(false);
         if (local === '' || isNaN(Number(local))) {
           setLocal(String(value));
         } else {
